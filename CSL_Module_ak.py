@@ -29,19 +29,19 @@ class CSL_Module():
     self.L = self.A * self.K
     self.V = np.max(w)+1
     self.MAXITER = 50
-    self.alpha_T = 10
-    self.alpha_theta = 10
-    self.alpha_T0 = 10
-    self.alpha_pi = 10
+    self.alpha_T = 0.1
+    self.alpha_theta = 0.1
+    self.alpha_T0 = 0.1
+    self.alpha_pi = 0.1
     self.m = 0
     self.tau = 1
     self.b_lam = 100
     self.a_lam = self.b_lam * 1
     self.F = np.random.randint(0,self.A,size = (self.D,self.N))
-    self.T0 = np.random.dirichlet(np.repeat(self.alpha_T0,self.A))
-    self.T = np.random.dirichlet(np.repeat(self.alpha_T0,self.A),size = self.A)
-    self.theta = np.random.dirichlet(np.repeat(self.alpha_theta, self.V),size =(self.A,self.K))
-    self.pi = np.random.dirichlet(np.repeat(self.alpha_pi,self.K),size = self.A)
+    self.T0 = np.repeat(1/self.A,self.A)
+    self.T = np.full((self.A,self.A),1/self.A)
+    self.theta = np.full((self.A,self.K,self.V),1/self.V)
+    self.pi = np.full((self.A,self.K),1/self.K)
     self.lam = np.random.gamma(self.a_lam,1/self.b_lam,size=(self.A,self.K))
     self.lam = np.full(shape=(self.A,self.K),fill_value=50.0)
     self.mu = np.array([np.linspace(np.min(self.z[:,a]),np.max(self.z[:,a]),self.K) for a in range(self.A)])

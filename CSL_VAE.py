@@ -14,7 +14,7 @@ class CSL_VAE():
         self.phi = []
         self.w=w
         self.beta = beta
-        self.epoch = 100
+        self.epoch = 5000
         self.latent_dim = 10
         self.linear_dim = 1024
         self.image_size = 64

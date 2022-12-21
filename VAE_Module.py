@@ -126,7 +126,7 @@ class VAE_Module(nn.Module):
 
     def learn(self,mutual_iteration):
         model=copy.deepcopy(self.to(device))
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
         for i in range(self.epoch):
             train_loss = 0
             s=time.time()
@@ -148,8 +148,9 @@ class VAE_Module(nn.Module):
         for data,_,_ in self.dataloader:
             data=data.to(device)
             _,_,_,batch_z = model.forward(data)
-            z_list.append(batch_z)
-        z = torch.cat(z_list,dim=0).to("cpu").detach().numpy()
+            z_list.append(batch_z.to("cpu").detach().numpy())
+        z = np.concatenate(z_list)
+        print(z.shape)
         #print(z[:30])
         return z
 
