@@ -1,22 +1,16 @@
-import copy
-import os
+import copy,os,math,glob,cv2,torch,itertools
 from numbers import Number
 import numpy as np
-import math
-import glob
-import cv2
 from matplotlib import pyplot as plt
 from torch.utils.data.dataset import Subset
 from torch.utils.data.sampler import SubsetRandomSampler
-import torch 
 from dataset import Dataset_3dshapes
 from betaVAE import betaVAE
-from file_option_name_memo import file_name_option_dict
+from file_option_name_memo import file_name_option_dict,label_word_correspondance
 
 def label_to_vocab(label):
     attribute_num = label.shape[1]
     index_offset = 0
-    num_W = np.sum([np.unique(label[:,i]).shape[0] for i in range(attribute_num)])
     for a in range(attribute_num):
         for i, category in enumerate(np.unique(label[:,a])):
             index = np.where(label[:,a]==category)[0]
@@ -25,6 +19,22 @@ def label_to_vocab(label):
         index_offset += len(np.unique(label[:,a]))
     w = label.astype(np.int8)
     return w
+def label_to_word(file_name_option):
+    attribute_num = len(label_word_correspondance)
+    word_list = np.array(list(itertools.chain.from_iterable(label_word_correspondance)))
+    word_list_len = len(word_list)
+    len_list = [len(label_word_correspondance[a]) for a in range(attribute_num)]
+    index_list = np.arange(word_list_len)
+    index_offset = 0
+    eliminate_list = []
+    for a in range(attribute_num):
+        eliminate_list.append(np.array(file_name_option_dict[file_name_option][a])+index_offset)
+        index_offset += len_list[a]
+    eliminate_list = np.concatenate(eliminate_list).astype(np.int8)
+    index_list = np.delete(index_list,eliminate_list).astype(np.int8)
+    word = word_list[index_list]
+    return word
+
 def save_model(model,loss_mode, latent_dim, beta, linear_dim, prior_logvar,i, file_name_option = None):
     if file_name_option != None:
         existfiles = glob.glob(f"model_{loss_mode}VAE/main/latent_dim={latent_dim}/beta={beta}_linear={linear_dim}_prior_logvar={prior_logvar}_epoch=*_{file_name_option}.pth")

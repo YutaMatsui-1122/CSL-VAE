@@ -10,9 +10,11 @@ from utils import *
 
 def calc_ARI(label,truth_labels):
   ARI_list = []
+  ARI_index = []
   for a in range(5):
     ARI_list.append(np.max([ARI(label[:,i],truth_labels[:,a]) for i in range(label.shape[1])]))
-  return np.round(ARI_list,decimals=3)
+    ARI_index.append(np.argmax([ARI(label[:,i],truth_labels[:,a]) for i in range(label.shape[1])]))
+  return np.round(ARI_list,decimals=3), ARI_index
 
 
 class CSL_Module():
@@ -146,29 +148,35 @@ class CSL_Module():
     return w_star
 
   def wrd2img_sampling_F(self,w_star):
-    F_star = np.zeros(len(w_star),dtype=np.int8)
+    N_star = len(w_star)
+    F_star = np.zeros(N_star,dtype=np.int8)
     T0_hat = np.array([np.sum(self.theta[a*self.K:(a+1)*self.K][:,w_star[0]]) for a in range(self.A)]) * self.T0    
     T0_hat /= np.sum(T0_hat)
+    F_star[0] = np.random.choice(self.A, p=T0_hat)
+    for n in range(1,N_star):
+      T_hat = np.array([np.sum(self.theta[a*self.K:(a+1)*self.K][:,w_star[n]]) for a in range(self.A)]) * self.T[F_star[n-1]]
+      T_hat /= np.sum(T_hat)
+      F_star[n] = np.random.choice(self.A, p=T_hat)
     return F_star
 
-  def wrd2img_sampling_c(self,z_star):
+  def wrd2img_sampling_c(self,w_star, F_star):
     c_star = np.zeros(self.A,dtype=np.int8)
     log_pi = np.log(self.pi)
     for a in range(self.A):
-      log_pi_hat = np.zeros(self.A,dtype=np.float128)
-      log_pi_hat += log_pi[a]
-      log_pi_hat += np.array([self.logpdf(z_star[a],self.mu[a][k],self.lam[a][k]) for k in range(self.K)])
-      pi_hat = np.exp(log_pi_hat)
+      pi_hat = np.zeros(self.K,dtype=np.float128)
+      pi_hat += log_pi[a]
+      for n in np.where(F_star==a)[0]:
+        pi_hat += np.log(self.theta[a*self.K:(a+1)*self.K,w_star[n]])
+      pi_hat = np.exp(pi_hat).astype(np.float64)
       pi_hat /= np.sum(pi_hat)
-      c_star[a] = np.random.choice(self.K,p=pi_hat)      
+      c_star[a] = np.random.choice(self.K,p=pi_hat)
     return c_star
 
-  def wrd2img_sampling_z(self,c_star,F_star,N_star):
-    w_star = np.zeros(N_star,dtype=np.int8)
-    for n in range(N_star):
-      
-      w_star[n] = np.random.choice(self.V,self.theta[F_star[n]+self.K * c_star[F_star[n]]])
-    return w_star
+  def wrd2img_sampling_z(self,c_star):
+    z_star = np.empty(self.A)
+    for a in range(self.A):
+      z_star[a]=np.random.normal(loc=self.mu[a][c_star[a]],scale=1/(self.lam[a][c_star[a]])**0.5)
+    return z_star
 
   def logpdf(self,z,mu,lam):
     return -0.5 * (lam*(z-mu)**2-np.log(lam)+np.log(2*math.pi))

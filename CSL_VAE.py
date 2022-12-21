@@ -1,5 +1,5 @@
 from VAE_Module import VAE_Module
-from CSL_Module_ak import CSL_Module
+from CSL_Module import CSL_Module
 
 from torch.utils.data.dataset import Subset
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -50,9 +50,9 @@ class CSL_VAE():
     def wrd2img(self,w_star,mutual_iteration):
         self.setting_learned_model(self.w,self.beta,mutual_iteration)        
         F_star = self.csl_module.wrd2img_sampling_F(w_star)
-        c_star = self.csl_module.wrd2img_sampling_c(z_star)        
-        z_star = self.csl_module.wrd2img_sampling_z(c_star,F_star)
-        z_star = torch.from_numpy(z_star)
+        c_star = self.csl_module.wrd2img_sampling_c(w_star, F_star)
+        z_star = self.csl_module.wrd2img_sampling_z(c_star)
+        z_star = torch.from_numpy(z_star).float()
         z_star = torch.unsqueeze(z_star,0)
         o_star = self.vae_module.decode(z_star)[0]
         return o_star
