@@ -1,5 +1,5 @@
 from VAE_Module import VAE_Module
-from CSL_Module import CSL_Module
+from CSL_Module_ak import CSL_Module
 
 from torch.utils.data.dataset import Subset
 from torch.utils.data.sampler import SubsetRandomSampler

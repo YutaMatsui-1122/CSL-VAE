@@ -1,6 +1,6 @@
 from CSL_VAE import CSL_VAE
 from VAE_Module import VAE_Module
-from CSL_Module import CSL_Module
+from CSL_Module_ak import CSL_Module
 
 from torch.utils.data.dataset import Subset
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -42,7 +42,7 @@ for data,label,_ in csl_vae.vae_module.shuffle_dataloader:
 label = label.numpy()[:,:5]
 o_star = data[0]
 N_star = 5
-mutual_iteration = 2
+mutual_iteration = 0
 print(np.round(csl_vae.csl_module.T,decimals=3))
 print(np.round(csl_vae.csl_module.T0,decimals=3))
 for i in range(100):
