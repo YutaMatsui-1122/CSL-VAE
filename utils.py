@@ -7,6 +7,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from dataset import Dataset_3dshapes
 from betaVAE import betaVAE
 from file_option_name_memo import file_name_option_dict,label_word_correspondance
+from functools import reduce
 
 def label_to_vocab(label):
     attribute_num = label.shape[1]
@@ -19,6 +20,7 @@ def label_to_vocab(label):
         index_offset += len(np.unique(label[:,a]))
     w = label.astype(np.int8)
     return w
+
 def label_to_word(file_name_option):
     attribute_num = len(label_word_correspondance)
     word_list = np.array(list(itertools.chain.from_iterable(label_word_correspondance)))
@@ -99,21 +101,26 @@ def HSV2RGB(HSV_img):
     RGB_img = cv2.cvtColor(RGB_img,cv2.COLOR_HSV2BGR_FULL)
     return RGB_img
 
-def create_dataloader(batch_size,file_name_option = "full", val_split=1):
-    dataset = Dataset_3dshapes(f"dataset/3dshapes_hsv_images_{file_name_option}.npy",f"dataset/3dshapes_hsv_labels_{file_name_option}.npy")
+def create_dataloader(batch_size,file_name_option = "full", valid_list = []):
+    data_filename = f"dataset/3dshapes_hsv_images_{file_name_option}.npy"; label_filename = f"dataset/3dshapes_hsv_labels_{file_name_option}.npy"
+    image = np.load(data_filename).transpose((0,3,1,2)); label = label_to_vocab(np.load(label_filename))    
+    
     print("create dataloader")
-    val_split=val_split
-    n_samples = len(dataset)
-    D = int(n_samples * (val_split)) # データ総数
-    subset1_indices = list(range(0, D)); subset2_indices = list(range(D, n_samples)) 
-    train_sampler = SubsetRandomSampler(subset1_indices); valid_sampler = SubsetRandomSampler(subset1_indices)
-    train_dataset = Subset(dataset, subset1_indices); valid_dataset = Subset(dataset, subset2_indices)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
-    valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=batch_size, sampler=valid_sampler)
-    dataloader = torch.utils.data.DataLoader(dataset,batch_size=batch_size,shuffle=False)
-    shuffle_dataloader = torch.utils.data.DataLoader(dataset,batch_size=batch_size,shuffle=True)
-    print("total number of data points",D)
-    return D,train_loader,valid_loader,dataloader,shuffle_dataloader
+    valid_index = np.array([],dtype=np.int32)
+    for valid_word_sequence in valid_list:
+        v_list =[]
+        for valid_word in valid_word_sequence:
+            v_list.append(np.where(label==valid_word)[0])
+        valid_index = np.append(valid_index,reduce(np.intersect1d,v_list))
+    n_samples = len(label)
+    train_index = np.delete(np.arange(n_samples),valid_index)
+    train_dataset = Dataset_3dshapes(image[train_index],label[train_index]);valid_dataset = Dataset_3dshapes(image[valid_index],label[valid_index]) 
+    train_shuffle_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,shuffle=True)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,shuffle=False)    
+    valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=batch_size,shuffle=False)
+
+    print("total number of data points",len(train_dataset))
+    return train_loader,valid_loader,train_shuffle_loader,train_dataset.label[:,:5]
 
 def VAE_model(beta,latent_dim,device,linear_dim,dataset_name):
     image_channel=3

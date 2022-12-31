@@ -124,38 +124,38 @@ class VAE_Module(nn.Module):
         return BCE + self.beta * KLD
 
 
-    def learn(self,mutual_iteration):
+    def learn(self,mutual_iteration,model_dir):
         model=copy.deepcopy(self.to(device))
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
+        self.model_dir = model_dir
+        loss_list = np.array([])
         for i in range(self.epoch):
             train_loss = 0
             s=time.time()
             for data, _,batch_index in self.shuffle_dataloader:
                 data = Variable(data).to(device)
                 optimizer.zero_grad()
-                recon_batch, mu, logvar, z_d = model.forward(data)
+                recon_batch, mu, logvar, _ = model.forward(data)
                 batch_prior_mu = self.prior_mu[batch_index]
                 batch_prior_logvar = self.prior_logvar[batch_index]
                 loss = model.loss_function(recon_batch, data, mu, logvar, batch_prior_mu,batch_prior_logvar ,mutual_iteration)
                 loss.backward()
                 train_loss += loss.item()
                 optimizer.step()
-            if (i+1) % 100 == 0 or i == (self.epoch-1):
+            loss_list = np.append(loss_list,train_loss / self.D)
+            if i==0 or (i+1) % 100 == 0 or i == (self.epoch-1):
                 print('====> Beta: {} Epoch: {} Average loss: {:.4f}  Learning time:{}s'.format(self.beta, i+1, train_loss / self.D,round(time.time()-s)))
                 self.save_model(model,mutual_iteration,i+1)
-
         z_list = []
         for data,_,_ in self.dataloader:
             data=data.to(device)
             _,_,_,batch_z = model.forward(data)
             z_list.append(batch_z.to("cpu").detach().numpy())
         z = np.concatenate(z_list)
-        print(z.shape)
-        #print(z[:30])
         return z
 
     def save_model(self,model,mutual_iteration,i):
-        existfiles = glob.glob(f"model_VAE_Module/beta={self.beta}_mutual_iteration={mutual_iteration}_epoch=*.pth")
-        torch.save(model.state_dict(), f"model_VAE_Module/beta={self.beta}_mutual_iteration={mutual_iteration}_epoch={i}.pth")
+        existfiles = glob.glob(os.path.join(self.model_dir,f"beta={self.beta}_mutual_iteration={mutual_iteration}_epoch=*.pth"))
+        torch.save(model.state_dict(), os.path.join(self.model_dir,f"beta={self.beta}_mutual_iteration={mutual_iteration}_epoch={i}.pth"))
         for f in existfiles:
             os.remove(f)

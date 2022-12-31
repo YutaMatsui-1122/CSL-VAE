@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 from torch.utils.data.dataset import Subset
 from torch.utils.data.sampler import SubsetRandomSampler
-import torch 
+import torch , os
 from dataset import Dataset_3dshapes
 from torch.autograd import Variable
 import numpy as np
@@ -56,12 +56,14 @@ def plot_anime(n):
 batch_size = 500
 file_name_option = None
 dataset_name = "3dshapes"
-file_name_option = "one_view_point_55544"
+file_name_option = "three_view_point_88844"
 dup_num = 10
 shift_rate = 0.01
 
+#file_name_option += f"×{dup_num}_shift_{shift_rate}"
+
 ########## create dataloader  (Check "shuffle = True". If this value is False, the model cannot gain disentangled representation) #############
-D,_,_,dataloader,shuffle_dataloader= create_dataloader(dataset_name,batch_size,file_name_option,dup_num=dup_num,shift_rate=shift_rate)
+D,_,_,dataloader,shuffle_dataloader,w= create_dataloader(batch_size,file_name_option)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -70,7 +72,7 @@ latent_dim=10
 linear_dim=1024
 start_epoch=0
 epoch=299
-mutual_iteration=3
+mutual_iteration=6
 prior_logvar = 0
 image_size= 64
 
@@ -78,9 +80,12 @@ for num_batch, (data,label,_) in enumerate(shuffle_dataloader):
             break
 
 for iter in range(mutual_iteration):
-    file_name_option_iter =file_name_option + f"_{iter}"
+    #file_name_option_iter =file_name_option + f"_{iter}"
+    exp = 4
+    iter = 5
+    model_dir = f"exp_CSL_VAE/exp{exp}/model/VAE_Module"
     model = VAE_Module(beta,epoch,latent_dim,linear_dim,image_size,batch_size,D,dataloader,shuffle_dataloader).to(device)
-    model_file = glob.glob(f"model_VAE_Module/beta={beta}_mutual_iteration={iter}_epoch=*.pth")[0]
+    model_file = glob.glob(os.path.join(model_dir,f"beta={beta}_mutual_iteration={iter}_epoch=*.pth"))[0]
     print(model_file)
     model.load_state_dict(torch.load(model_file))
     model.eval()
@@ -89,11 +94,10 @@ for iter in range(mutual_iteration):
     fig, axes = plt.subplots(I,latent_dim+2, figsize=((16,9)))
     z_hist=np.empty((0,latent_dim))
     mu_hist=np.empty((0,latent_dim))
-    for num_batch, (data,label,_) in enumerate(shuffle_dataloader):
-        recon_x,mu,logvar,z = model(data.to(device))
-        recon_x,mu,logvar,z = recon_x.to("cpu").detach().numpy(), mu.to("cpu").detach().numpy(), logvar.to("cpu").detach().numpy(), z.to("cpu").detach().numpy()
-        z_hist = np.append(z_hist,z,axis=0)
-        mu_hist = np.append(mu_hist,mu,axis=0)
+    recon_x,mu,logvar,z = model(data.to(device))
+    recon_x,mu,logvar,z = recon_x.to("cpu").detach().numpy(), mu.to("cpu").detach().numpy(), logvar.to("cpu").detach().numpy(), z.to("cpu").detach().numpy()
+    z_hist = np.append(z_hist,z,axis=0)
+    mu_hist = np.append(mu_hist,mu,axis=0)
     traversal_z_list = np.array([np.linspace(np.min(mu_hist[:,i]),np.max(mu_hist[:,i]),len(z_trans)) for i in range(latent_dim)])
     ani = animation.FuncAnimation(fig, plot_anime,frames=len(z_trans)-1, interval=50) 
     #plot_anime(0)

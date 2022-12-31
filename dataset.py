@@ -34,11 +34,9 @@ def label_to_vocab(label):
     return w
 
 class Dataset_3dshapes(torch.utils.data.Dataset):
-    def __init__(self,data_filename,label_filename):
-        self.image = np.load(data_filename).transpose((0,3,1,2))
-        self.label = label_to_vocab(np.load(label_filename))
-        self.image = torch.tensor(self.image,dtype=torch.float)
-        self.label = torch.tensor(self.label,dtype=torch.int8)
+    def __init__(self,image,label):
+        self.image = torch.tensor(image,dtype=torch.float)
+        self.label = torch.tensor(label,dtype=torch.int8)
     def __len__(self):
         return len(self.image)
 

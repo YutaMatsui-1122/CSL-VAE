@@ -1,3 +1,5 @@
-from utils import label_to_word
-
-word = label_to_word("one_view_point_55544")
+import numpy  as np
+file = "exp_CSL_VAE/exp2/word sequence setting.npy"
+data = np.load(file,allow_pickle=True).item()
+a,b,c = data.values()
+print(a)

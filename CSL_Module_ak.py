@@ -52,6 +52,7 @@ class CSL_Module():
     parameter_file = glob.glob(f"save_CSL+VAE/iter=*_mutual_iteration={mutual_iteration}.npy")[0]
     parameters = np.load(parameter_file,allow_pickle=True).item()
     _,_,_,self.T0,self.T,self.theta,self.pi,self.mu,self.lam,_ = parameters.values()
+    
 
   def sampling_F(self):
     for d in range(self.D):
