@@ -45,9 +45,9 @@ def calc_ARI(label,truth_labels):
 def logpdf(z,mu,lam):
     return -0.5 * (lam*(z-mu)**2-np.log(lam)+np.log(2*math.pi))
 for iter in range(mutual_iteration):
-    exp = 2
-    iter = 5
-    valid_list = [[5,8,20,25,30],[2,12,19,27,31],[7,14,23,27,28],[0,10,22,27,29]]
+    exp = 8
+    iter = 10
+    valid_list = [[3,6,11,16,20],[0,5,14,17,22],[4,7,12,16,19],[1,9,10,18,21]]
     exp_dir = f"exp_CSL_VAE/exp{exp}"
     model_dir = os.path.join(exp_dir,"model")
     result_dir = os.path.join(exp_dir,"result")
@@ -93,10 +93,10 @@ for iter in range(mutual_iteration):
     plt.figure()
     for a in range(10):            
         bins = np.linspace(np.min(z[:,a]),np.max(z[:,a]),100)
-        for k in range(10):
+        for k in range(15):
             index = np.where(c[:,a]==k)[0]
             z_a_k = z[:,a][index]
             plt.hist(z_a_k,bins = bins,alpha=0.5,label=f"c={k+1}")
-        plt.xlabel(r"$z_8$")
+        plt.xlabel(r"$z$")
         plt.legend()
         plt.show()

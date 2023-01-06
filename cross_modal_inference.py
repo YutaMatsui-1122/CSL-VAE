@@ -13,28 +13,23 @@ import matplotlib.pyplot as plt
 batch_size = 500
 file_name_option = None
 dataset_name = "3dshapes"
-file_name_option = "three_view_point_88844"
-#dup_num = 10
-#shift_rate = 0.01
+file_name_option = "five_view_point_55544"
+dup_num = 2
+shift_rate = 0.01
 
 Attribute_num = 5
 
 word = label_to_word(file_name_option)
-#file_name_option += f"×{dup_num}_shift_{shift_rate}"
+file_name_option += f"×{dup_num}_shift_{shift_rate}"
 label = np.load(f"dataset/{dataset_name}_hsv_labels_{file_name_option}.npy")
 w=label_to_vocab(label[:,:5])
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-beta = 16
-latent_dim=10
-linear_dim=1024
-epoch=1000
-image_size = 64
 
 csl_vae = CSL_VAE()
-exp = 2
-valid_list = [[5,8,20,25,30],[2,12,19,27,31],[7,14,23,27,28],[0,10,22,27,29]]
+exp = 12
+valid_list = [[3,6,11,16,20],[0,5,14,17,22],[4,7,12,16,19],[1,9,10,18,21]]
 exp_dir = f"exp_CSL_VAE/exp{exp}"
 model_dir = os.path.join(exp_dir,"model")
 result_dir = os.path.join(exp_dir,"result")
@@ -44,7 +39,7 @@ data = np.load(word_sequence_setting_file,allow_pickle=True).item()
 valid_list,grammar_list,Nd_rate = data.values()
 dataloader,valid_loader,shuffle_dataloader,w= create_dataloader(batch_size,file_name_option,valid_list)
 
-for data,label,_ in shuffle_dataloader:
+for data,label,_ in valid_loader:
     break
 w = w.to('cpu').detach().numpy().copy()
 
@@ -54,19 +49,19 @@ N_star = 5
 
 I =15
 
-for iter in [5]:
+for iter in range(9):
     fig, axes = plt.subplots(2,I, figsize=((I,2)))
     csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate) 
     for i in range(I):
-        w_star = label[i]
+        i1=1
+        w_star = label[i1][:5]
         o_star = csl_vae.wrd2img(w_star)
-        word_sequence = ",  ".join(word[label[i]])
-        print(word_sequence)
+        word_sequence = ",  ".join(word[label[i1]])
         fig.suptitle(f"wrd2img inference (ML {iter})")
         axes[0][i].tick_params(bottom=False, left=False, right=False, top=False);axes[1][i].tick_params(bottom=False, left=False, right=False, top=False)
         axes[0][i].tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False);axes[1][i].tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False)
 
-        axes[0][i].imshow(HSV2RGB(data[i]))
+        axes[0][i].imshow(HSV2RGB(data[i1]))
         #axes1.set_title("correct image")
         axes[1][i].imshow(HSV2RGB(o_star))
         #axes2.set_title("infered image by CSL+VAE")
@@ -86,7 +81,7 @@ for iter in [5]:
         plt.tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False)
         plt.savefig(os.path.join(result_dir,f"Img2wrd_ML {iter}_{i}"))
 
-    word_sequence_accuracy = []
+    '''word_sequence_accuracy = []
     word_accuracy = []
     for data,label,_ in csl_vae.vae_module.shuffle_dataloader:
         for i in range(len(data)):
@@ -95,8 +90,8 @@ for iter in [5]:
             predicted_word = word[w_star]
             truth_word = word[label[i][:5]]
             word_accuracy.append(np.count_nonzero(predicted_word==truth_word))
-            word_sequence_accuracy.append(np.count_nonzero(predicted_word==truth_word)==5)
+            word_sequence_accuracy.append(np.count_nonzero(predicted_word==truth_word)==5)'''
     
-    print(f"ML {iter}",np.mean(word_accuracy))
-    print(f"ML {iter}",np.count_nonzero(word_sequence_accuracy)/ len(word_sequence_accuracy))
+    """print(f"ML {iter}",np.mean(word_accuracy))
+    print(f"ML {iter}",np.count_nonzero(word_sequence_accuracy)/ len(word_sequence_accuracy))"""
 

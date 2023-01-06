@@ -170,7 +170,7 @@ class CSL_Module():
       pi_hat /= np.sum(pi_hat)
       c_star[a] = np.random.choice(self.K,p=pi_hat)
     return c_star
-
+    
   def wrd2img_sampling_z(self,c_star):
     z_star = np.empty(self.A)
     for a in range(self.A):
