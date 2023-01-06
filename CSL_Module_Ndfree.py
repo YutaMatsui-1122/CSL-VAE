@@ -42,10 +42,10 @@ class CSL_Module():
     self.alpha_T = 1
     self.alpha_theta = 1
     self.alpha_T0 = 1
-    self.alpha_pi = 1
+    self.alpha_pi = 10
     self.m = 0
-    self.tau = 1
-    self.b_lam = 1000
+    self.tau = 0.1
+    self.b_lam = 5
     self.a_lam = self.b_lam * 1
     self.F = np.random.randint(0,self.A,size = (self.D,self.N_max))
     self.F = np.array([[np.random.randint(0,self.A) if n<self.N[d] else self.A for n in range(self.N_max)]for d in range(self.D)])
@@ -179,10 +179,10 @@ class CSL_Module():
       F_star[n] = np.random.choice(self.A, p=T_hat)    
     return F_star
     
-  def wrd2img_sampling_c_joint_F(self,w_star):
+  def wrd2img_sampling_c_joint_F(self,w_star,sampling_flag=True):
     N_star = len(w_star)
     c_star = np.zeros(self.A,dtype=np.int8)
-    N_comb = all_combination(N_star)
+    N_comb = all_combination(N_star)    
     for a in range(self.A):
       pi_hat = np.zeros(self.K)
       theta_a = self.theta[a*self.K:(a+1)*self.K]
@@ -191,7 +191,10 @@ class CSL_Module():
       pi_hat /= np.sum(pi_hat)
       pi_hat = pi_hat * self.pi[a]
       pi_hat /= np.sum(pi_hat)
-      c_star[a] = np.random.choice(self.K,p=pi_hat)
+      if sampling_flag:
+        c_star[a] = np.random.choice(self.K,p=pi_hat)
+      else:
+        c_star[a] = np.argmax(pi_hat)
     print(c_star)
     return c_star
 
@@ -210,7 +213,6 @@ class CSL_Module():
 
   def wrd2img_sampling_z(self,c_star,sampling_flag = True):
     z_star = np.empty(self.A)
-    print(c_star)
     for a in range(self.A):
       if sampling_flag:
         z_star[a]=np.random.normal(loc=self.mu[a][c_star[a]],scale=1/(self.lam[a][c_star[a]])**0.5) #sampling z

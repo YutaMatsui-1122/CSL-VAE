@@ -37,9 +37,9 @@ class CSL_Module():
     self.alpha_T0 = 1
     self.alpha_pi = 1
     self.m = 0
-    self.tau = 1
-    self.b_lam = 1000
-    self.a_lam = self.b_lam * 1
+    self.tau = 0.1
+    self.b_lam = 100
+    self.a_lam = self.b_lam * 30
     self.F = np.random.randint(0,self.A,size = (self.D,self.N))
     self.T0 = np.random.dirichlet(np.repeat(self.alpha_T0,self.A))
     self.T = np.random.dirichlet(np.repeat(self.alpha_T0,self.A),size = self.A)

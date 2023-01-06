@@ -79,7 +79,7 @@ class CSL_VAE():
             print(f"Start Mutural Iteration {i}")
             debug = False
             if debug :
-                model_file = glob.glob(os.path.join(self.root_dir,"exp1/model/VAE_Module",f"beta={beta}_mutual_iteration={0}_epoch=*.pth"))[0]
+                model_file = glob.glob(os.path.join(self.root_dir,"exp12/model/VAE_Module",f"beta={beta}_mutual_iteration={0}_epoch=*.pth"))[0]
                 self.vae_module.load_state_dict(torch.load(model_file))
                 self.vae_module = self.vae_module.to(device)
                 z_list = []
@@ -106,7 +106,7 @@ class CSL_VAE():
     def wrd2img(self,w_star):
         #F_star = self.csl_module.wrd2img_sampling_F(w_star)
         #c_star = self.csl_module.wrd2img_sampling_c(w_star, F_star)
-        c_star = self.csl_module.wrd2img_sampling_c_joint_F(w_star)
+        c_star = self.csl_module.wrd2img_sampling_c_joint_F(w_star,sampling_flag=False)
         z_star = self.csl_module.wrd2img_sampling_z(c_star,sampling_flag=False)
         z_star = torch.from_numpy(z_star).float()
         z_star = torch.unsqueeze(z_star,0)
@@ -138,5 +138,4 @@ if __name__ == "__main__":
     #Nd_rate = [0, 0, 0.2, 0.3, 0.5]
     Nd_rate = [0, 0, 0, 0, 1]
     csl_vae = CSL_VAE()
-    csl_vae.initialize_model(beta,file_name_option,mutual_iteration_number,valid_list,grammar_list,Nd_rate)
     csl_vae.learn(beta,file_name_option,mutual_iteration_number,valid_list,grammar_list,Nd_rate)

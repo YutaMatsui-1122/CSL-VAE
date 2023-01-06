@@ -47,13 +47,14 @@ label = label.numpy()[:,:5]
 
 N_star = 5
 
-I =15
+I = 4
+print(data.shape)
 
-for iter in range(9):
+for iter in range(11):
     fig, axes = plt.subplots(2,I, figsize=((I,2)))
     csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate) 
     for i in range(I):
-        i1=1
+        i1 = i*10
         w_star = label[i1][:5]
         o_star = csl_vae.wrd2img(w_star)
         word_sequence = ",  ".join(word[label[i1]])
