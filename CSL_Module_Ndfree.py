@@ -187,7 +187,9 @@ class CSL_Module():
       pi_hat = np.zeros(self.K)
       theta_a = self.theta[a*self.K:(a+1)*self.K]
       for k in range(self.K):
-        pi_hat[k] = np.sum([np.sum(theta_a[k][w_star[Ns]]) for Ns in N_comb]) * self.pi[a][k]
+        pi_hat[k] = np.sum([np.sum(theta_a[k][w_star[Ns]]) for Ns in N_comb])
+      pi_hat /= np.sum(pi_hat)
+      pi_hat = pi_hat * self.pi[a]
       pi_hat /= np.sum(pi_hat)
       c_star[a] = np.random.choice(self.K,p=pi_hat)
     print(c_star)
