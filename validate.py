@@ -33,7 +33,7 @@ start_epoch=0
 epoch=3000
 prior_logvar = 2
 loss_mode_list = ["beta"]  #"beta" or "beta-TC"
-mutual_iteration = 6
+mutual_iteration = 15
 
 def calc_ARI(label,truth_labels):
   ARI_list = []
@@ -44,14 +44,14 @@ def calc_ARI(label,truth_labels):
   return np.round(ARI_list,decimals=3), ARI_index
 def logpdf(z,mu,lam):
     return -0.5 * (lam*(z-mu)**2-np.log(lam)+np.log(2*math.pi))
-for iter in range(mutual_iteration):
-    exp = 13
-    iter = 0
-    valid_list = [[3,6,11,16,20],[0,5,14,17,22],[4,7,12,16,19],[1,9,10,18,21]]
+for iter in range(0,mutual_iteration):
+    exp = 19
     exp_dir = f"exp_CSL_VAE/exp{exp}"
     model_dir = os.path.join(exp_dir,"model")
     result_dir = os.path.join(exp_dir,"result")
+    result_MI_dir = os.path.join(result_dir,f"MI{iter}")
     os.makedirs(result_dir,exist_ok=True)
+    os.makedirs(result_MI_dir,exist_ok=True)
     word_sequence_setting_file = os.path.join(exp_dir,"word sequence setting.npy")
     data = np.load(word_sequence_setting_file,allow_pickle=True).item()
     valid_list,grammar_list,Nd_rate = data.values()
@@ -60,6 +60,7 @@ for iter in range(mutual_iteration):
     data = np.load(existing_file,allow_pickle=True).item()
     truth_label = np.load(f"dataset/{dataset_name}_hsv_labels_{file_name_option}.npy")
     F = data["F"]
+    print(F)
     z = data["z"]
     w = data["w"]
     lam = data["lam"]
@@ -69,18 +70,20 @@ for iter in range(mutual_iteration):
     T0 = data["T0"]
     pi = data["pi"]
     c = data["c"]
-    #plt.figure()
+    plt.figure()
+    sns.heatmap(T)
+    plt.savefig(os.path.join(result_MI_dir,f"Heatmap of T"))
     print(lam)
     print()
     if len(theta.shape)==2:
         heat_theta = theta
     else:
         heat_theta = np.reshape(theta,(-1,theta.shape[2]))
-    sns.heatmap(heat_theta)
-    print(T0)
     plt.figure()
-    sns.heatmap(T)
-    plt.show()
+    sns.heatmap(heat_theta)
+    plt.savefig(os.path.join(result_MI_dir,f"Heatmap of theta"))
+    print(T0)
+    #plt.show()
     print(truth_category.shape)
     print("ARI a:",calc_ARI(c,truth_category))
     truth_F = np.tile(np.arange(5),(F.shape[0],1))
@@ -92,13 +95,14 @@ for iter in range(mutual_iteration):
         print(i)
         plt.figure()
         #plt.show()'''
-    plt.figure()
+    
     for a in range(10):            
         bins = np.linspace(np.min(z[:,a]),np.max(z[:,a]),100)
+        plt.figure()
         for k in range(10):
             index = np.where(c[:,a]==k)[0]
             z_a_k = z[:,a][index]
             plt.hist(z_a_k,bins = bins,alpha=0.5,label=f"c={k+1}")
         plt.xlabel(r"$z$")
         plt.legend()
-        plt.show()
+        plt.savefig(os.path.join(result_MI_dir,f"Histgram z_{a}"))

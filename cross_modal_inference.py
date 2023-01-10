@@ -1,6 +1,4 @@
-from CSL_VAE import CSL_VAE
-from VAE_Module import VAE_Module
-from CSL_Module_ak import CSL_Module
+from CSL_VAE import CSL_VAE,CSL_Module_parameters,VAE_Module_parameters
 
 from torch.utils.data.dataset import Subset
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -27,34 +25,43 @@ w=label_to_vocab(label[:,:5])
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-csl_vae = CSL_VAE()
-exp = 12
-valid_list = [[3,6,11,16,20],[0,5,14,17,22],[4,7,12,16,19],[1,9,10,18,21]]
+
+exp = 21
 exp_dir = f"exp_CSL_VAE/exp{exp}"
 model_dir = os.path.join(exp_dir,"model")
 result_dir = os.path.join(exp_dir,"result")
 os.makedirs(result_dir,exist_ok=True)
+
 word_sequence_setting_file = os.path.join(exp_dir,"word sequence setting.npy")
 data = np.load(word_sequence_setting_file,allow_pickle=True).item()
 valid_list,grammar_list,Nd_rate = data.values()
 dataloader,valid_loader,shuffle_dataloader,w= create_dataloader(batch_size,file_name_option,valid_list)
 
-for data,label,_ in valid_loader:
-    break
+new_data = False
+
+if new_data:
+    for data,label,_ in valid_loader :
+        break
+    I = 4
+else:
+    for data,label,_ in shuffle_dataloader:
+        break
+    I = 10
+
 w = w.to('cpu').detach().numpy().copy()
 
 label = label.numpy()[:,:5]
 
 N_star = 5
 
-I = 4
-print(data.shape)
-
-for iter in range(11):
+for iter in range(20):
+    result_MI_dir = os.path.join(result_dir,f"MI{iter}")
+    os.makedirs(result_MI_dir,exist_ok=True)
     fig, axes = plt.subplots(2,I, figsize=((I,2)))
+    csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate)
     csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate) 
     for i in range(I):
-        i1 = i*10
+        i1 = 10
         w_star = label[i1][:5]
         o_star = csl_vae.wrd2img(w_star)
         word_sequence = ",  ".join(word[label[i1]])
@@ -66,7 +73,7 @@ for iter in range(11):
         #axes1.set_title("correct image")
         axes[1][i].imshow(HSV2RGB(o_star))
         #axes2.set_title("infered image by CSL+VAE")
-    plt.savefig(os.path.join(result_dir,f"Wrd2img_ML {iter}"))
+    plt.savefig(os.path.join(result_MI_dir,f"Wrd2img_ML"))
 
     for i in range(2):
         figure = plt.figure(figsize=(10,10))
@@ -80,7 +87,7 @@ for iter in range(11):
         plt.imshow(HSV2RGB(data[i]))
         plt.tick_params(bottom=False, left=False, right=False, top=False)
         plt.tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False)
-        plt.savefig(os.path.join(result_dir,f"Img2wrd_ML {iter}_{i}"))
+        plt.savefig(os.path.join(result_MI_dir,f"Img2wrd_ML_{i}"))
 
     '''word_sequence_accuracy = []
     word_accuracy = []

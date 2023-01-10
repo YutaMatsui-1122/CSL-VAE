@@ -4,7 +4,7 @@ from torch.nn import functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.autograd import Variable
-from utils import save_model,HSV2RGB
+from utils import save_model,HSV2RGB,create_dataloader
 import copy
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -22,12 +22,13 @@ class UnFlatten(nn.Module):
         return input.view(-1,self.last_channel, self.flatten_dim, self.flatten_dim)
 
 class VAE_Module(nn.Module):
-    def __init__(self,beta,epoch,latent_dim,linear_dim,image_size,batch_size,D,dataloader,shuffle_dataloader):
+    def __init__(self,VAE_Module_parameters,file_name_option,valid_list):
         super(VAE_Module, self).__init__()
         #Setting Network Architecture
+        self.dataloader,self.valid_loader,self.shuffle_dataloader,self.w= create_dataloader(VAE_Module_parameters["batch_size"],file_name_option,valid_list)
+        self.beta,self.latent_dim,self.linear_dim,self.epoch,self.image_size,self.batch_size = VAE_Module_parameters.values()
         layer = 4
         image_channel=3
-        self.image_size = image_size
         en_channel=[image_channel,32,64,128,256]
         de_channel=[256,128,64,32,image_channel]
         en_kernel=np.repeat(4,layer)
@@ -36,15 +37,7 @@ class VAE_Module(nn.Module):
         de_stride=np.repeat(2,layer)
         en_padding=np.repeat(1,layer)
         de_padding=np.repeat(1,layer)
-
-        self.batch_size=batch_size
-        self.D=D
-        self.dataloader = dataloader
-        self.shuffle_dataloader = shuffle_dataloader
-        self.epoch = epoch
-        self.beta=beta
-        self.latent_dim=latent_dim
-        self.linear_dim=linear_dim
+        self.D=self.w.shape[0]
         self.layer_num = layer
         self.last_channel = en_channel[-1]
         flatten_dim = int((self.image_size/(2**self.layer_num))*(self.image_size/(2**self.layer_num))*self.last_channel)
@@ -62,16 +55,16 @@ class VAE_Module(nn.Module):
                 nn.ReLU()
             )
         modules.append(Flatten())
-        modules.append(nn.Linear(flatten_dim, linear_dim))
+        modules.append(nn.Linear(flatten_dim, self.linear_dim))
         self.encoder= nn.Sequential(*modules)
         
-        self.fc1 = nn.Linear(linear_dim, latent_dim)
-        self.fc2 = nn.Linear(linear_dim, latent_dim)
-        self.fc3 = nn.Linear(latent_dim, linear_dim)
+        self.fc1 = nn.Linear(self.linear_dim, self.latent_dim)
+        self.fc2 = nn.Linear(self.linear_dim, self.latent_dim)
+        self.fc3 = nn.Linear(self.latent_dim, self.linear_dim)
         
         modules=[]
         H=len(de_channel)-1
-        modules.append(nn.Linear(linear_dim,flatten_dim))
+        modules.append(nn.Linear(self.linear_dim,flatten_dim))
         modules.append(UnFlatten(int(self.image_size/(2**self.layer_num)),self.last_channel))
         for h in range(H):
             modules.append(
@@ -126,7 +119,7 @@ class VAE_Module(nn.Module):
 
     def learn(self,mutual_iteration,model_dir):
         model=copy.deepcopy(self.to(device))
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
         self.model_dir = model_dir
         loss_list = np.array([])
         for i in range(self.epoch):
@@ -143,7 +136,7 @@ class VAE_Module(nn.Module):
                 train_loss += loss.item()
                 optimizer.step()
             loss_list = np.append(loss_list,train_loss / self.D)
-            if i==0 or (i+1) % 100 == 0 or i == (self.epoch-1):
+            if i==0 or (i+1) % (self.epoch // 5) == 0 or i == (self.epoch-1):
                 print('====> Beta: {} Epoch: {} Average loss: {:.4f}  Learning time:{}s'.format(self.beta, i+1, train_loss / self.D,round(time.time()-s)))
                 self.save_model(model,mutual_iteration,i+1)
         z_list = []
@@ -155,7 +148,7 @@ class VAE_Module(nn.Module):
         return z
 
     def save_model(self,model,mutual_iteration,i):
-        existfiles = glob.glob(os.path.join(self.model_dir,f"beta={self.beta}_mutual_iteration={mutual_iteration}_epoch=*.pth"))
-        torch.save(model.state_dict(), os.path.join(self.model_dir,f"beta={self.beta}_mutual_iteration={mutual_iteration}_epoch={i}.pth"))
+        existfiles = glob.glob(os.path.join(self.model_dir,f"mutual_iteration={mutual_iteration}_epoch=*.pth"))
+        torch.save(model.state_dict(), os.path.join(self.model_dir,f"mutual_iteration={mutual_iteration}_epoch={i}.pth"))
         for f in existfiles:
             os.remove(f)
