@@ -27,26 +27,27 @@ def all_combination(N):
 
 class CSL_Module():
   def __init__(self,CSL_Module_parameters) -> None:
-    self.MAXITER,self.K,self.alpha_T,self.alpha_theta,self.alpha_T0,self.alpha_pi,self.m,self.tau,self.a_lam,self.b_lam = CSL_Module_parameters.values()
+    self.MAXITER,self.A,self.K,self.alpha_T,self.alpha_theta,self.alpha_T0,self.alpha_pi,self.m,self.tau,self.a_lam,self.b_lam = CSL_Module_parameters.values()
 
   def initialize_parameter(self,w,z,N_list):  
     self.w = w
     self.z = z
     self.D,self.N_max = self.w.shape
-    self.N = N_list
-    self.A = self.z.shape[1]
-    self.L = self.A * self.K
     self.V = np.max(w)+1
+    self.L = self.A * self.K
+    self.N = N_list
     self.F = np.random.randint(0,self.A,size = (self.D,self.N_max))
     self.F = np.array([[np.random.randint(0,self.A) if n<self.N[d] else self.A for n in range(self.N_max)]for d in range(self.D)])
     self.T0 = np.random.dirichlet(np.repeat(self.alpha_T0,self.A))
     self.T = np.random.dirichlet(np.repeat(self.alpha_T0,self.A),size = self.A)
     self.theta = np.random.dirichlet(np.repeat(self.alpha_theta, self.V),size =self.L)
     self.pi = np.random.dirichlet(np.repeat(self.alpha_pi,self.K),size = self.A)
-    self.lam = np.random.gamma(self.a_lam,1/self.b_lam,size=(self.A,self.K))
     self.lam = np.full(shape=(self.A,self.K),fill_value=50.0)
     self.mu = np.array([np.linspace(np.min(self.z[:,a]),np.max(self.z[:,a]),self.K) for a in range(self.A)])
     self.c = np.array([np.random.choice(self.K,p=self.pi[a],size = self.D) for a in range(self.A)]).T
+
+  def receive_z(self,z):
+    self.z = z
   
   def setting_parameters(self,w,z,N_list,mutual_iteration,model_dir):
     self.initialize_parameter(w,z,N_list)
@@ -129,7 +130,7 @@ class CSL_Module():
         pi_hat /= np.sum(pi_hat)
         self.c[d][a] = np.random.choice(self.K,p=pi_hat)
   
-  def img2wrd_sampling_c(self,z_star):
+  def img2wrd_sampling_c(self,z_star,sampling_flag = True):
     c_star = np.zeros(self.A,dtype=np.int8)
     log_pi = np.log(self.pi)
     for a in range(self.A):
@@ -138,8 +139,10 @@ class CSL_Module():
       log_pi_hat += np.array([self.logpdf(z_star[a],self.mu[a][k],self.lam[a][k]) for k in range(self.K)])
       pi_hat = np.exp(log_pi_hat)
       pi_hat /= np.sum(pi_hat)
-      c_star[a] = np.random.choice(self.K,p=pi_hat)
-      c_star[a] = np.argmax(pi_hat)
+      if sampling_flag:
+        c_star[a] = np.random.choice(self.K,p=pi_hat)
+      else:
+        c_star[a] = np.argmax(pi_hat)
     return c_star
   
   def img2wrd_sampling_F(self,N_star):
@@ -159,11 +162,16 @@ class CSL_Module():
 
   def wrd2img_sampling_F(self,w_star):
     N_star = len(w_star)
-    F_list = list(itertools.product(range(self.A),repeat=N_star))
+    F_star = np.zeros(N_star)
+    T0_hat = np.array([np.sum(self.theta[a*self.K:(a+1)*self.K][:,w_star[0]])*((self.A-1)**self.A) for a in range(self.A)]) * self.T0
+    T0_hat /= np.sum(T0_hat)
+    F_star[0] = np.random.choice(self.A,p=T0_hat)
+    #F_list = list(itertools.product(range(self.A),repeat=N_star))
     F_list = list(itertools.permutations(range(self.A),N_star))
     T_hat = [np.prod([np.sum(self.theta[F[n]*self.K:(F[n]+1)*self.K][:,w_star[n]]) for n in range(N_star)]) * self.T0[F[0]] * np.prod([self.T[F[n-1]][F[n]] for n in range(1,N_star)])  for F in F_list]
     T_hat /= np.sum(T_hat)
     F_star = F_list[np.random.choice(len(T_hat),p=T_hat)]
+    F_star = np.array(F_list[np.argmax(T_hat)])
     return F_star
     
   def wrd2img_sampling_c_joint_F(self,w_star,sampling_flag=True):
@@ -192,6 +200,7 @@ class CSL_Module():
         pi_hat += np.log(self.theta[a*self.K:(a+1)*self.K,w_star[n]])
       pi_hat = np.exp(pi_hat).astype(np.float64)
       pi_hat /= np.sum(pi_hat)
+      #print(a,pi_hat)
       c_star[a] = np.random.choice(self.K,p=pi_hat)
     return c_star
 
@@ -208,7 +217,11 @@ class CSL_Module():
     return -0.5 * (lam*(z-mu)**2-np.log(lam)+np.log(2*math.pi))
 
   def learn(self,w,z,mutual_iteration,model_dir,N_list,truth_category):
-    self.initialize_parameter(w,z,N_list)
+    if mutual_iteration == 0:
+      self.initialize_parameter(w,z,N_list)
+    else:
+      self.receive_z(z)
+
     for i in range(self.MAXITER):
       s = time.time()
       self.sampling_F()

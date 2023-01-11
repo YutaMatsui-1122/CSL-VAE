@@ -110,10 +110,9 @@ class CSL_VAE():
 
     def wrd2img(self,w_star):
         F_star = self.csl_module.wrd2img_sampling_F(w_star)
-        print(F_star)
-        #c_star = self.csl_module.wrd2img_sampling_c(w_star, F_star)
-        c_star = self.csl_module.wrd2img_sampling_c_joint_F(w_star,sampling_flag=True)
-        z_star = self.csl_module.wrd2img_sampling_z(c_star,sampling_flag=True)
+        c_star = self.csl_module.wrd2img_sampling_c(w_star, F_star)
+        #c_star = self.csl_module.wrd2img_sampling_c_joint_F(w_star,sampling_flag=False)
+        z_star = self.csl_module.wrd2img_sampling_z(c_star,sampling_flag=False)
         z_star = torch.from_numpy(z_star).float()
         z_star = torch.unsqueeze(z_star,0)
         o_star = self.vae_module.decode(z_star)[0]
@@ -135,8 +134,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 mutual_iteration_number = 16
 valid_list = [[3,6,11,16,20],[0,5,14,17,22],[4,7,12,16,19],[1,9,10,18,21]]
 grammar_list = [[0,1,2,3,4],[1,0,2,3,4],[0,1,3,2,4],[1,0,3,2,4],[2,3,4,0,1],[2,3,4,1,0],[3,2,4,0,1],[3,2,4,1,0]]
-CSL_Module_parameters = {"MAXITER":100,"K":10,"alpha_T":10,"alpha_theta":10,"alpha_T0":10,"alpha_pi":1,"m":0,"tau":0.01,"a_lam":10,"b_lam":10}
-VAE_Module_parameters = {"beta":16,"latent_dim":10,"linear_dim":1024,"epoch":300,"image_size":64,"batch_size":500}
+latent_dim = 10
+CSL_Module_parameters = {"MAXITER":100,"A":latent_dim,"K":10,"alpha_T":10,"alpha_theta":10,"alpha_T0":10,"alpha_pi":1,"m":0,"tau":0.01,"a_lam":10,"b_lam":10}
+VAE_Module_parameters = {"beta":16,"latent_dim":latent_dim,"linear_dim":1024,"epoch":300,"image_size":64,"batch_size":500}
 #Nd_rate = [0, 0, 0.2, 0.3, 0.5]
 Nd_rate = [0, 0, 0, 0, 1]
 

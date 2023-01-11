@@ -44,8 +44,9 @@ def calc_ARI(label,truth_labels):
   return np.round(ARI_list,decimals=3), ARI_index
 def logpdf(z,mu,lam):
     return -0.5 * (lam*(z-mu)**2-np.log(lam)+np.log(2*math.pi))
-for iter in range(0,mutual_iteration):
-    exp = 19
+    
+for iter in np.arange(20):
+    exp = 21
     exp_dir = f"exp_CSL_VAE/exp{exp}"
     model_dir = os.path.join(exp_dir,"model")
     result_dir = os.path.join(exp_dir,"result")

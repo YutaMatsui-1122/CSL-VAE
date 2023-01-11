@@ -26,7 +26,7 @@ w=label_to_vocab(label[:,:5])
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-exp = 21
+exp = 20
 exp_dir = f"exp_CSL_VAE/exp{exp}"
 model_dir = os.path.join(exp_dir,"model")
 result_dir = os.path.join(exp_dir,"result")
@@ -54,14 +54,14 @@ label = label.numpy()[:,:5]
 
 N_star = 5
 
-for iter in range(20):
+for iter in np.arange(20):
     result_MI_dir = os.path.join(result_dir,f"MI{iter}")
     os.makedirs(result_MI_dir,exist_ok=True)
     fig, axes = plt.subplots(2,I, figsize=((I,2)))
     csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate)
     csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate) 
     for i in range(I):
-        i1 = 10
+        i1 = i*10
         w_star = label[i1][:5]
         o_star = csl_vae.wrd2img(w_star)
         word_sequence = ",  ".join(word[label[i1]])
