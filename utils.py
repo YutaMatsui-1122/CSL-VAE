@@ -115,12 +115,14 @@ def create_dataloader(batch_size,file_name_option = "full", valid_list = []):
     n_samples = len(label)
     train_index = np.delete(np.arange(n_samples),valid_index)
     train_dataset = Dataset_3dshapes(image[train_index],label[train_index]);valid_dataset = Dataset_3dshapes(image[valid_index],label[valid_index]) 
+    full_dataset = Dataset_3dshapes(image,label)
     train_shuffle_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,shuffle=True)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,shuffle=False)    
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,shuffle=False)
+    full_dataloader = torch.utils.data.DataLoader(full_dataset, batch_size=batch_size,shuffle=False)
+    full_shuffle_loader = torch.utils.data.DataLoader(full_dataset, batch_size=batch_size,shuffle=True)
     valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=batch_size,shuffle=False)
-
     print("total number of data points",len(train_dataset))
-    return train_loader,valid_loader,train_shuffle_loader,train_dataset.label[:,:5]
+    return train_loader,valid_loader,train_shuffle_loader,train_dataset.label[:,:5],full_dataloader,full_shuffle_loader
 
 def VAE_model(beta,latent_dim,device,linear_dim,dataset_name):
     image_channel=3

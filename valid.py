@@ -6,11 +6,12 @@ from dataset import Dataset_3dshapes
 from torch.autograd import Variable
 import numpy as np
 import glob
-import cv2
+import cv2,os
 from betaVAE import betaVAE
 from utils import HSV2RGB,VAE_model,create_dataloader
 import matplotlib.animation as animation
 from VAE_Module import VAE_Module
+from CSL_VAE import CSL_VAE,CSL_Module_parameters,VAE_Module_parameters
 
 debug = False
 
@@ -60,47 +61,45 @@ def plot_anime(n):
 batch_size = 500
 file_name_option = None
 dataset_name = "3dshapes"
-file_name_option = "one_view_point_55544"
-dup_num = 10
+file_name_option = "five_view_point_55544"
+dup_num = 2
 shift_rate = 0.01
+file_name_option += f"×{dup_num}_shift_{shift_rate}"
 
 ########## create dataloader  (Check "shuffle = True". If this value is False, the model cannot gain disentangled representation) #############
-D,_,_,dataloader,shuffle_dataloader= create_dataloader(dataset_name,batch_size,file_name_option,dup_num=dup_num,shift_rate=shift_rate)
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-beta=16
-latent_dim=10
-linear_dim=1024
-start_epoch=0
-epoch=2999
-prior_logvar = 0
-mutual_iteration = 3
-image_size = 64
+exp = 24
+exp_dir = f"exp_CSL_VAE/exp{exp}"
+model_dir = os.path.join(exp_dir,"model")
+result_dir = os.path.join(exp_dir,"result")
+os.makedirs(result_dir,exist_ok=True)
+word_sequence_setting_file = os.path.join(exp_dir,"word sequence setting.npy")
+data = np.load(word_sequence_setting_file,allow_pickle=True).item()
+valid_list,grammar_list,Nd_rate,truth_F,truth_T0,truth_T = data.values()
+dataloader,valid_loader,shuffle_dataloader,w,_,_= create_dataloader(batch_size,file_name_option,valid_list)
+latent_dim = 10
+w = w.numpy()
+for iter in range(20):
+    result_MI_dir = os.path.join(result_dir,f"MI{iter}")
+    os.makedirs(result_MI_dir,exist_ok=True)
 
-for iter in range(mutual_iteration):
-    model = VAE_Module(beta,epoch,latent_dim,linear_dim,image_size,batch_size,D,dataloader,shuffle_dataloader).to(device)
-    model_parameter_file= glob.glob(f"model_VAE_Module/beta={beta}_mutual_iteration={iter}_epoch=101.pth")[0]
-    print(model_parameter_file)
-    model.load_state_dict(torch.load(model_parameter_file))
-    model.eval()
+    csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate)
+    csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate) 
+
+    model = csl_vae.vae_module.to(device)
     z_trans=np.arange(100) #Latent traversal range
-    I=10
+    I=5
     fig, axes = plt.subplots(I,latent_dim+2, figsize=((16,9)))
     z_hist=np.empty((0,latent_dim))
     mu_hist=np.empty((0,latent_dim))
-    for num_batch, (data,label) in enumerate(shuffle_dataloader):
+    for num_batch, (data,label,_) in enumerate(shuffle_dataloader):
         recon_x,mu,logvar,z = model(data.to(device))
         recon_x,mu,logvar,z = recon_x.to("cpu").detach().numpy(), mu.to("cpu").detach().numpy(), logvar.to("cpu").detach().numpy(), z.to("cpu").detach().numpy()
         z_hist = np.append(z_hist,z,axis=0)
         mu_hist = np.append(mu_hist,mu,axis=0)                
     traversal_z_list = np.array([np.linspace(np.min(mu_hist[:,i]),np.max(mu_hist[:,i]),len(z_trans)) for i in range(latent_dim)])
-    fig2, axes2 = plt.subplots(2,5, figsize=((16,9)))
-    for a in range(10):
-        bins = np.linspace(np.min(z_hist[:,a]),np.max(z_hist[:,a]),100)
-        axes2[a//5][a%5].hist(z_hist[:,a],bins=bins)
-    fig2.savefig(f"result_VAE_Module/hist_beta={beta}_mutual_iteration={iter}.png")
     ani = animation.FuncAnimation(fig, plot_anime,frames=len(z_trans)-1, interval=50)
-    save_file_name=f"result_VAE_Module/beta={beta}_mutual_iteration={iter}.gif"
+    save_file_name=os.path.join(result_MI_dir,"latent_traversal.gif")
     ani.save(save_file_name)
     print(f"save:{save_file_name}")

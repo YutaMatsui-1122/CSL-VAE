@@ -25,8 +25,9 @@ class VAE_Module(nn.Module):
     def __init__(self,VAE_Module_parameters,file_name_option,valid_list):
         super(VAE_Module, self).__init__()
         #Setting Network Architecture
-        self.dataloader,self.valid_loader,self.shuffle_dataloader,self.w= create_dataloader(VAE_Module_parameters["batch_size"],file_name_option,valid_list)
+        self.dataloader,self.valid_loader,self.shuffle_dataloader,self.w,_,_= create_dataloader(VAE_Module_parameters["batch_size"],file_name_option,valid_list)
         self.beta,self.latent_dim,self.linear_dim,self.epoch,self.image_size,self.batch_size = VAE_Module_parameters.values()
+        self.initial_beta = np.copy(self.beta)
         layer = 4
         image_channel=3
         en_channel=[image_channel,32,64,128,256]
@@ -122,6 +123,7 @@ class VAE_Module(nn.Module):
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
         self.model_dir = model_dir
         loss_list = np.array([])
+        self.beta = self.initial_beta * (0.8)**mutual_iteration
         for i in range(self.epoch):
             train_loss = 0
             s=time.time()
@@ -137,7 +139,7 @@ class VAE_Module(nn.Module):
                 optimizer.step()
             loss_list = np.append(loss_list,train_loss / self.D)
             if i==0 or (i+1) % (self.epoch // 5) == 0 or i == (self.epoch-1):
-                print('====> Beta: {} Epoch: {} Average loss: {:.4f}  Learning time:{}s'.format(self.beta, i+1, train_loss / self.D,round(time.time()-s)))
+                print('====> Beta: {} Epoch: {} Average loss: {:.4f}  Learning time:{}s'.format(np.round(self.beta,2), i+1, train_loss / self.D,round(time.time()-s)))
                 self.save_model(model,mutual_iteration,i+1)
         z_list = []
         for data,_,_ in self.dataloader:

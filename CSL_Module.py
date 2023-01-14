@@ -64,18 +64,15 @@ class CSL_Module():
         T0_hat = self.T0 * self.theta[theta_index_per_a,self.w[d][0]]
       T0_hat /= np.sum(T0_hat)
       self.F[d][0] = np.random.choice(self.A,p=T0_hat)
-      n = 1
-      while 1:
+      for n in range(1,self.N[d]):
         if n == (self.N[d]-1):
           theta_hat = self.T[self.F[d][n-1]] * self.theta[theta_index_per_a,self.w[d][n]]
           theta_hat /= np.sum(theta_hat)
-          self.F[d][n-1] = np.random.choice(self.A,p=theta_hat)
-          break
+          self.F[d][n] = np.random.choice(self.A,p=theta_hat)
         else:
           theta_hat = self.T[self.F[d][n-1]] * self.T[:,self.F[d][n+1]] * self.theta[theta_index_per_a,self.w[d][n]]
           theta_hat /= np.sum(theta_hat)
           self.F[d][n] = np.random.choice(self.A,p=theta_hat)
-        n+=1
 
   def sampling_T0(self):
     alpha_T0_hat = np.bincount(self.F[:,0],minlength=self.A) + self.alpha_T0
@@ -145,16 +142,23 @@ class CSL_Module():
         c_star[a] = np.argmax(pi_hat)
     return c_star
   
-  def img2wrd_sampling_F(self,N_star):
-    F_list = list(itertools.product(range(self.A),repeat=N_star))
-    F_list = list(itertools.permutations(range(self.A),N_star))
+  def img2wrd_sampling_F(self,EOS):
+    #F_list = np.array(list(itertools.product(range(self.A),repeat=N_star)))
+    F_star = []
+    F_star.append(np.random.choice(self.A,p= self.T0))
+    for n in range(1,self.N_max):
+      F_star.append(np.random.choice(self.A,p= self.T[F_star[n-1]]))
+      if F_star[n]==EOS:
+        break
+    '''F_list = np.array(list(itertools.permutations(range(self.A),N_star)))
     T_hat = [self.T0[F[0]] * np.prod([self.T[F[n-1]][F[n]] for n in range(1,N_star)])  for F in F_list]
     T_hat /= np.sum(T_hat)
     F_star = F_list[np.random.choice(len(T_hat),p=T_hat)]
-    F_star = F_list[np.argmax(T_hat)]
+    F_star = F_list[np.argmax(T_hat)]'''
     return F_star
 
-  def img2wrd_sampling_w(self,c_star,F_star,N_star):
+  def img2wrd_sampling_w(self,c_star,F_star):
+    N_star = len(F_star)
     w_star = np.zeros(N_star,dtype=np.int8)
     for n in range(N_star):
       w_star[n] = np.random.choice(self.V,p=self.theta[F_star[n]*self.K + c_star[F_star[n]]])
@@ -216,12 +220,11 @@ class CSL_Module():
   def logpdf(self,z,mu,lam):
     return -0.5 * (lam*(z-mu)**2-np.log(lam)+np.log(2*math.pi))
 
-  def learn(self,w,z,mutual_iteration,model_dir,N_list,truth_category):
-    if mutual_iteration == 0:
+  def learn(self,w,z,mutual_iteration,model_dir,N_list,truth_category,reset_parameter=True):
+    if mutual_iteration == 0 or reset_parameter:
       self.initialize_parameter(w,z,N_list)
     else:
       self.receive_z(z)
-
     for i in range(self.MAXITER):
       s = time.time()
       self.sampling_F()
