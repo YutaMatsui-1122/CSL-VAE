@@ -59,10 +59,10 @@ class CSL_VAE():
         # grammar_list : designate the order of attributes
         # Nd_rate      : designate the rate of word sequence length
         N_max = len(Nd_rate)
-        '''self.truth_T0 = np.array([0.5,0.2,0.3,0,0])
-        self.truth_T = np.array([[0,0.6,0.2,0.2,0,0],[0,0,0.5,0.3,0.1,0.1],[0,0,0,0.4,0.4,0.2],[0,0,0,0,0.7,0.3],[0,0,0,0,0,1],[0,0,0,0,0,1]])'''
-        self.truth_T0 = np.array([1,0,0,0,0])
-        self.truth_T = np.array([[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1],[0,0,0,0,0,1]])
+        self.truth_T0 = np.array([0.5,0.2,0.3,0,0])
+        self.truth_T = np.array([[0,0.6,0.2,0.2,0,0],[0,0,0.5,0.3,0.1,0.1],[0,0,0,0.4,0.4,0.2],[0,0,0,0,0.7,0.3],[0,0,0,0,0,1],[0,0,0,0,0,1]])
+        """self.truth_T0 = np.array([1,0,0,0,0])
+        self.truth_T = np.array([[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1],[0,0,0,0,0,1]])"""
         F_list = np.array(list(itertools.permutations(range(N_max),N_max)))
         T_hat = [self.truth_T0[F[0]] * np.prod([self.truth_T[F[n-1]][F[n]] for n in range(1,N_max)])  for F in F_list]
         T_hat /= np.sum(T_hat)
@@ -133,8 +133,8 @@ class CSL_VAE():
 batch_size = 500
 file_name_option = None
 dataset_name = "3dshapes"
-file_name_option = "five_view_point_55544"
-dup_num = 2
+file_name_option ="three_view_point_88844"
+dup_num = 1
 shift_rate = 0.01
 Attribute_num = 5
 file_name_option += f"×{dup_num}_shift_{shift_rate}"
@@ -147,9 +147,9 @@ mutual_iteration_number = 15
 valid_list = [[3,6,11,16,20],[0,5,14,17,22],[4,7,12,16,19],[1,9,10,18,21]]
 grammar_list = [[0,1,2,3,4],[1,0,2,3,4],[0,1,3,2,4],[1,0,3,2,4],[2,3,4,0,1],[2,3,4,1,0],[3,2,4,0,1],[3,2,4,1,0]]
 latent_dim = 10
-CSL_Module_parameters = {"MAXITER":100,"A":latent_dim,"K":10,"alpha_T":1,"alpha_theta":0.1,"alpha_T0":1,"alpha_pi":1,"m":0,"tau":0.01,"a_lam":10,"b_lam":10}
-VAE_Module_parameters = {"beta":20,"latent_dim":latent_dim,"linear_dim":1024,"epoch":300,"image_size":64,"batch_size":500}
-#Nd_rate = [0, 0, 0.2, 0.3, 0.5]
+CSL_Module_parameters = {"MAXITER":300,"A":latent_dim,"K":15,"alpha_T":1,"alpha_theta":0.1,"alpha_T0":1,"alpha_pi":1,"m":0,"tau":0.01,"a_lam":10,"b_lam":10}
+VAE_Module_parameters = {"beta":16,"latent_dim":latent_dim,"linear_dim":1024,"epoch":3000,"image_size":64,"batch_size":500}
+
 Nd_rate = [0, 0, 0, 0, 1]
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import torch, glob
 from utils import *
 import numpy as np
 import matplotlib.pyplot as plt
+from image_classification_net import Image_Classification_Net
 
 
 batch_size = 500
@@ -37,7 +38,7 @@ word_sequence_setting_file = os.path.join(exp_dir,"word sequence setting.npy")
 setting = np.load(word_sequence_setting_file,allow_pickle=True).item()
 valid_list,grammar_list,Nd_rate,truth_F,truth_T0,truth_T = setting.values()
 
-dataloader,valid_loader,shuffle_dataloader,w,_,_= create_dataloader(batch_size,file_name_option,valid_list)
+dataloader,valid_loader,shuffle_dataloader,w,full_dataloader,_= create_dataloader(batch_size,file_name_option,valid_list)
 w = w.to('cpu').detach().numpy().copy()
 truth_category = np.copy(w)
 new_data = False
@@ -67,12 +68,19 @@ def calc_ARI_EAR(label,truth_labels,F,truth_F):
     print(np.sum([np.count_nonzero(truth_F[d][:N[d]]==F[d][:N[d]])for d in range(D)])/np.sum(N))
     return np.round(ARI_list,decimals=3), ARI_index
 
-def wrd2img():
-    for iter in np.arange(20):
-        
+def tensor_equal(a,b):
+    if len(a)!=len(b):
+        return False
+    elif torch.allclose(a,b):
+        return True
+    else:
+        return False
+
+def wrd2img_plt():
+    
+    for iter in np.arange(20):        
         result_MI_dir = os.path.join(result_dir,f"MI{iter}")
-        os.makedirs(result_MI_dir,exist_ok=True)
-        
+        os.makedirs(result_MI_dir,exist_ok=True)        
         csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate)
         csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate) 
         fig, axes = plt.subplots(2,I, figsize=((I,2)))
@@ -161,5 +169,34 @@ def img2wrd():
     """print(f"ML {iter}",np.mean(word_accuracy))
     print(f"ML {iter}",np.count_nonzero(word_sequence_accuracy)/ len(word_sequence_accuracy))"""
 
+def wrd2img_quant_eval():
+    icn = Image_Classification_Net(V=23)
+    icn.setting_learnt_model(file_name_option)
+    for iter in [0,1,15]:
+        result_MI_dir = os.path.join(result_dir,f"MI{iter}")
+        os.makedirs(result_MI_dir,exist_ok=True)        
+        csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate)
+        csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate) 
+        truth_counter = 0
+        D = 0
+        for _,label,_ in full_dataloader:
+            temp_batch_size = label.shape[0]
+            w_stars = label[:,:5]
+            o_stars = torch.zeros((temp_batch_size,3,64,64))
+            for i in range(temp_batch_size):
+                o_stars[i] = csl_vae.wrd2img(w_stars[i])
+            icn_w_stars_knot = icn.predict(o_stars)
+            icn_w_stars = [torch.where(icn_w_stars_knot[i])[0].to(torch.int8) for i in range(temp_batch_size)]
+            TF_array = torch.Tensor([tensor_equal(icn_w_stars[i],w_stars[i]) for i in range(temp_batch_size)])
+            truth_counter += torch.count_nonzero(TF_array)
+            D += temp_batch_size
+        
+        f = open(os.path.join(result_MI_dir,'Wrd2img evaluation by image classifier.txt'), 'w', newline='\n')
+        f.write(f"Wrd2img accuracy = {truth_counter / D}\n")
+        f.close()
+        print(f"MI {iter} : Wrd2img accuracy = {truth_counter / D}")
+
+
 #img2wrd()
-wrd2img()
+#wrd2img_plt()
+wrd2img_quant_eval()

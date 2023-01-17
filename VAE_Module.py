@@ -120,10 +120,10 @@ class VAE_Module(nn.Module):
 
     def learn(self,mutual_iteration,model_dir):
         model=copy.deepcopy(self.to(device))
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
         self.model_dir = model_dir
         loss_list = np.array([])
-        self.beta = self.initial_beta * (0.8)**mutual_iteration
+        #self.beta = self.initial_beta * (0.8)**mutual_iteration
         for i in range(self.epoch):
             train_loss = 0
             s=time.time()

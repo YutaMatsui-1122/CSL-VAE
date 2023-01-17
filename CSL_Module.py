@@ -42,18 +42,23 @@ class CSL_Module():
     self.T = np.random.dirichlet(np.repeat(self.alpha_T0,self.A),size = self.A)
     self.theta = np.random.dirichlet(np.repeat(self.alpha_theta, self.V),size =self.L)
     self.pi = np.random.dirichlet(np.repeat(self.alpha_pi,self.K),size = self.A)
-    self.lam = np.full(shape=(self.A,self.K),fill_value=50.0)
+    self.lam = np.full(shape=(self.A,self.K),fill_value=10.0)
     self.mu = np.array([np.linspace(np.min(self.z[:,a]),np.max(self.z[:,a]),self.K) for a in range(self.A)])
     self.c = np.array([np.random.choice(self.K,p=self.pi[a],size = self.D) for a in range(self.A)]).T
 
   def receive_z(self,z):
     self.z = z
   
+  def set_parameters_for_economizing(self):
+    self.sum_theta_aw = np.array([[np.sum(self.theta[a*self.K:(a+1)*self.K][:,w]) for w in range(self.V)] for a in range(self.A)] )
+    self.F_list = [list(itertools.permutations(range(self.A),N_star)) for N_star in range(self.N_max+1)]
+  
   def setting_parameters(self,w,z,N_list,mutual_iteration,model_dir):
     self.initialize_parameter(w,z,N_list)
     parameter_file = glob.glob(f"{model_dir}/CSL_Module/iter=*_mutual_iteration={mutual_iteration}.npy")[0]
     parameters = np.load(parameter_file,allow_pickle=True).item()
     _,_,_,self.T0,self.T,self.theta,self.pi,self.mu,self.lam,_ = parameters.values()
+    self.set_parameters_for_economizing()
 
   def sampling_F(self):
     for d in range(self.D):
@@ -166,16 +171,11 @@ class CSL_Module():
 
   def wrd2img_sampling_F(self,w_star):
     N_star = len(w_star)
-    F_star = np.zeros(N_star)
-    T0_hat = np.array([np.sum(self.theta[a*self.K:(a+1)*self.K][:,w_star[0]])*((self.A-1)**self.A) for a in range(self.A)]) * self.T0
-    T0_hat /= np.sum(T0_hat)
-    F_star[0] = np.random.choice(self.A,p=T0_hat)
-    #F_list = list(itertools.product(range(self.A),repeat=N_star))
-    F_list = list(itertools.permutations(range(self.A),N_star))
-    T_hat = [np.prod([np.sum(self.theta[F[n]*self.K:(F[n]+1)*self.K][:,w_star[n]]) for n in range(N_star)]) * self.T0[F[0]] * np.prod([self.T[F[n-1]][F[n]] for n in range(1,N_star)])  for F in F_list]
+    F_star = np.zeros(N_star,dtype=np.int8)
+    T_hat = [np.prod([self.sum_theta_aw[F[n]][w_star[n]] for n in range(N_star)]) * self.T0[F[0]] * np.prod([self.T[F[n-1]][F[n]] for n in range(1,N_star)])  for F in self.F_list[N_star]]
     T_hat /= np.sum(T_hat)
-    F_star = F_list[np.random.choice(len(T_hat),p=T_hat)]
-    F_star = np.array(F_list[np.argmax(T_hat)])
+    F_star = self.F_list[N_star][np.random.choice(len(T_hat),p=T_hat)]
+    F_star = np.array(self.F_list[N_star][np.argmax(T_hat)])
     return F_star
     
   def wrd2img_sampling_c_joint_F(self,w_star,sampling_flag=True):

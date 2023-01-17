@@ -69,7 +69,7 @@ file_name_option += f"×{dup_num}_shift_{shift_rate}"
 ########## create dataloader  (Check "shuffle = True". If this value is False, the model cannot gain disentangled representation) #############
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-exp = 24
+exp = 28
 exp_dir = f"exp_CSL_VAE/exp{exp}"
 model_dir = os.path.join(exp_dir,"model")
 result_dir = os.path.join(exp_dir,"result")

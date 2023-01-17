@@ -101,11 +101,9 @@ def HSV2RGB(HSV_img):
     RGB_img = cv2.cvtColor(RGB_img,cv2.COLOR_HSV2BGR_FULL)
     return RGB_img
 
-def create_dataloader(batch_size,file_name_option = "full", valid_list = []):
+def create_dataloader(batch_size,file_name_option = "full", valid_list = [],khot_flag = False):
     data_filename = f"dataset/3dshapes_hsv_images_{file_name_option}.npy"; label_filename = f"dataset/3dshapes_hsv_labels_{file_name_option}.npy"
-    image = np.load(data_filename).transpose((0,3,1,2)); label = label_to_vocab(np.load(label_filename))    
-    
-    print("create dataloader")
+    image = np.load(data_filename).transpose((0,3,1,2)); label = label_to_vocab(np.load(label_filename))
     valid_index = np.array([],dtype=np.int32)
     for valid_word_sequence in valid_list:
         v_list =[]
@@ -114,6 +112,13 @@ def create_dataloader(batch_size,file_name_option = "full", valid_list = []):
         valid_index = np.append(valid_index,reduce(np.intersect1d,v_list))
     n_samples = len(label)
     train_index = np.delete(np.arange(n_samples),valid_index)
+    
+    if khot_flag:
+        khot_label = np.zeros((label.shape[0],np.max(label[:,:5])+1),dtype=np.float)
+        for i in range(label.shape[0]):
+            khot_label[i][label[i][:5]]+=1
+        label = khot_label
+        
     train_dataset = Dataset_3dshapes(image[train_index],label[train_index]);valid_dataset = Dataset_3dshapes(image[valid_index],label[valid_index]) 
     full_dataset = Dataset_3dshapes(image,label)
     train_shuffle_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,shuffle=True)
@@ -121,8 +126,11 @@ def create_dataloader(batch_size,file_name_option = "full", valid_list = []):
     full_dataloader = torch.utils.data.DataLoader(full_dataset, batch_size=batch_size,shuffle=False)
     full_shuffle_loader = torch.utils.data.DataLoader(full_dataset, batch_size=batch_size,shuffle=True)
     valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=batch_size,shuffle=False)
-    print("total number of data points",len(train_dataset))
-    return train_loader,valid_loader,train_shuffle_loader,train_dataset.label[:,:5],full_dataloader,full_shuffle_loader
+    if khot_flag:
+        return train_loader,valid_loader,train_shuffle_loader,train_dataset.label,full_dataloader,full_shuffle_loader
+    else:
+        return train_loader,valid_loader,train_shuffle_loader,train_dataset.label[:,:5],full_dataloader,full_shuffle_loader
+
 
 def VAE_model(beta,latent_dim,device,linear_dim,dataset_name):
     image_channel=3

@@ -44,7 +44,7 @@ def logpdf(z,mu,lam):
 
 for iter in np.arange(20):
     print("Mutual Iteration:",iter)
-    exp = 31
+    exp = 38
     exp_dir = f"exp_CSL_VAE/exp{exp}"
     model_dir = os.path.join(exp_dir,"model")
     result_dir = os.path.join(exp_dir,"result")
@@ -80,7 +80,8 @@ for iter in np.arange(20):
     plt.figure()
     sns.heatmap(heat_theta)
     plt.savefig(os.path.join(result_MI_dir,f"Heatmap of theta"))
-    print("ARI a:",calc_ARI_EAR(c,truth_category,F,truth_F))
+    ARI_list, ARI_index = calc_ARI_EAR(c,truth_category,F,truth_F)
+    print("ARI a:",ARI_list)
     truth_F = np.tile(np.arange(5),(F.shape[0],1))
     cw= np.stack((c[:,8][:20000],w[:,1][:20000])).T
     np.set_printoptions(threshold=np.inf)
@@ -90,9 +91,10 @@ for iter in np.arange(20):
         plt.figure()
         #plt.show()'''
     
-    for a in range(10):            
+    for a in range(10):
         bins = np.linspace(np.min(z[:,a]),np.max(z[:,a]),100)
         plt.figure()
+        
         for k in range(10):
             index = np.where(c[:,a]==k)[0]
             z_a_k = z[:,a][index]
@@ -100,3 +102,14 @@ for iter in np.arange(20):
         plt.xlabel(r"$z$")
         plt.legend()
         plt.savefig(os.path.join(result_MI_dir,f"Histgram z_{a}"))
+
+    for attri,a in enumerate(ARI_index):
+        bins = np.linspace(np.min(z[:,a]),np.max(z[:,a]),100)
+        plt.figure()
+        for k in np.unique(truth_category[:,attri]):
+            index = np.where(truth_category[:,attri]==k)[0]
+            z_a_k = z[:,a][index]
+            plt.hist(z_a_k,bins = bins,alpha=0.5,label=f"c={k+1}")
+        plt.xlabel(r"$z$")
+        plt.legend()
+        plt.savefig(os.path.join(result_MI_dir,f"Truth_label_Histgram z_{a}"))
