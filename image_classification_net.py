@@ -57,7 +57,6 @@ class Image_Classification_Net(nn.Module):
             s = time.time()
             D = 0
             for image,truth_label,_ in shuffle_dataloader:
-                print(truth_label.shape)
                 image,truth_label=image.to(device),truth_label.to(device).float()
                 optimizer.zero_grad()
                 label = model.forward(image)
@@ -67,14 +66,14 @@ class Image_Classification_Net(nn.Module):
                 D += image.shape[0]
                 optimizer.step()
             if i==0 or (i+1) %  (epoch // 10) == 0 or i == (epoch-1):
-                print(f'====> Epoch: {i+1} Average loss: {train_loss / D}  Learning time:{round(time.time()-s)}')
+                print(f'====> Epoch: {i+1} Average loss: {train_loss / D}  Learning time:{np.round(time.time()-s,decimals=3)}')
                 self.save_model(model,file_name_option,i)
     
     def save_model(self,model,file_name_option,iter):
         save_dir = f"exp_CSL_VAE/ICN"
-        existfiles = glob.glob(os.path.join(save_dir,f"debug_{file_name_option}_epoch=*.pth"))
+        existfiles = glob.glob(os.path.join(save_dir,f"{file_name_option}_epoch=*.pth"))
         os.makedirs(save_dir,exist_ok=True)
-        torch.save(model.state_dict(), os.path.join(save_dir,f"debug_{file_name_option}_epoch={iter+1}.pth"))
+        torch.save(model.state_dict(), os.path.join(save_dir,f"{file_name_option}_epoch={iter+1}.pth"))
         for f in existfiles:
             os.remove(f)
     
@@ -89,29 +88,28 @@ class Image_Classification_Net(nn.Module):
         return label
         
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-batch_size = 500
+batch_size = 100
 file_name_option = None
 dataset_name = "3dshapes"
-file_name_option = "five_view_point_55544"
-word = label_to_word(file_name_option)
-dup_num = 2
-shift_rate = 0.01
-file_name_option += f"×{dup_num}_shift_{shift_rate}"
-exp = 25
+file_name_option = "six_view_point_66644_2"
+exp = 0
 exp_dir = f"exp_CSL_VAE/exp{exp}"
 word_sequence_setting_file = os.path.join(exp_dir,"word sequence setting.npy")
 data = np.load(word_sequence_setting_file,allow_pickle=True).item()
-valid_list,grammar_list,Nd_rate,truth_F,truth_T0,truth_T = data.values()
-dataloader,valid_dataloader,shuffle_dataloader,truth_category,full_dataloader,full_shuffle_loader = create_dataloader(batch_size,file_name_option,valid_list,khot_flag=True)
+valid_list,truth_F,truth_T0,truth_T = data.values()
+_,_,_,w,_,full_shuffle_loader,_,_,_= create_dataloader(batch_size,file_name_option,valid_list,khot_flag=True)
+
 if __name__ == "__main__":
-    icn = Image_Classification_Net(V=23)
-    icn.learn(full_shuffle_loader,3000,file_name_option=file_name_option)
+    icn = Image_Classification_Net(V=w.shape[1])
+    icn.learn(full_shuffle_loader,1000,file_name_option=file_name_option)
     icn.setting_learnt_model(file_name_option=file_name_option)
     truth_counter = 0
     D = 0
-    for loader in [dataloader,valid_dataloader]:
-        for image,truth_label,_ in loader:
-            predicted_labels = icn.predict(image)
-            TF_array = [torch.allclose(predicted_labels[i],truth_label[i]) for i in range(image.shape[0])]
-            truth_counter += torch.count_nonzero(torch.tensor(TF_array))
-            D+=len(TF_array)
+    for image,truth_label,_ in full_shuffle_loader:
+        image = image.to(device)
+        predicted_labels = icn.predict(image).to(torch.int8)
+        TF_array = [torch.allclose(predicted_labels[i],truth_label[i]) for i in range(image.shape[0])]
+        truth_counter += torch.count_nonzero(torch.tensor(TF_array))
+        D+=len(TF_array)
+    
+    print(D,truth_counter/D)

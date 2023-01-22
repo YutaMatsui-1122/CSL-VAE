@@ -54,7 +54,7 @@ del f
 gc.collect()
 label = label_to_int(label)
 
-file_name_option = "five_view_point_55544"
+file_name_option = "six_view_point_66644_2"
 eliminate_list = file_name_option_dict[file_name_option]
 
 original_list = np.arange(label.shape[0])
@@ -71,8 +71,8 @@ sep_selected_list = np.split(selected_list,16)
 sep_dataset = []
 i = 0
 
-dup_num = 2
-shift_rate = 0.01
+dup_num = 1
+shift_rate = 0
 width_datagen = ImageDataGenerator(height_shift_range = shift_rate ,width_shift_range=shift_rate)
 
 for selected_list in sep_selected_list:

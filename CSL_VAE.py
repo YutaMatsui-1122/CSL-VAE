@@ -9,19 +9,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class CSL_VAE():
-    def __init__(self,file_name_option,mutual_iteration_number,CSL_Module_parameters,VAE_Module_parameters,valid_list,grammar_list=[[0,1,2,3,4]],Nd_rate=[0,0,0,0,1]) -> None:
+    def __init__(self,file_name_option,mutual_iteration_number,CSL_Module_parameters,VAE_Module_parameters,valid_list) -> None:
         self.VAE_Module_parameters = VAE_Module_parameters
         self.CSL_Module_parameters = CSL_Module_parameters
         self.file_name_option = file_name_option
+        self.truth_T0 = bigram_grammar["truth_T0"]
+        self.truth_T = bigram_grammar["truth_T"]
         self.valid_list = valid_list
-        self.grammar_list = grammar_list
-        self.Nd_rate = Nd_rate
         self.vae_module = VAE_Module(VAE_Module_parameters,self.file_name_option,self.valid_list)
         self.csl_module = CSL_Module(CSL_Module_parameters)
         self.w = self.vae_module.w.to('cpu').detach().numpy().copy()
         self.truth_category = self.w.copy()
+        self.create_word_sequence()
         self.D,_ = self.w.shape
-        self.create_word_sequence(grammar_list,Nd_rate)        
         self.csl_module.initialize_parameter(self.w,np.zeros((self.D,self.vae_module.latent_dim)),self.N)
         self.mutual_iteration_number = mutual_iteration_number
         self.phi = []
@@ -43,8 +43,8 @@ class CSL_VAE():
         f.write(f"  Mutual Iteration".ljust(20)+f" : {self.mutual_iteration_number}"+"\n")
         f.write(f"  file name option".ljust(20)+f" : {self.file_name_option}"+"\n")
         f.write(f"  valid list".ljust(20)+f" : {self.valid_list}"+"\n")
-        f.write(f"  grammar list".ljust(20)+f" : {self.grammar_list}"+"\n")
-        f.write(f"  Nd rate".ljust(20)+f" : {self.Nd_rate}"+"\n")
+        f.write(f"  truth T".ljust(20)+f" : {self.truth_T}"+"\n")
+        f.write(f"  truth T0".ljust(20)+f" : {self.truth_T0}"+"\n")
         f.write(f"\nCSL Module parapeters\n")
         for key,value in self.CSL_Module_parameters.items():
             f.write(f"  {key}".ljust(20)+f" : {value}"+"\n")
@@ -52,24 +52,15 @@ class CSL_VAE():
         for key,value in self.VAE_Module_parameters.items():
             f.write(f"  {key}".ljust(20)+f" : {value}"+"\n")
         f.close()
+        Hyperparameters={"CSL_Module_parameters":self.CSL_Module_parameters,"VAE_Module_parameters":self.VAE_Module_parameters}
+        np.save(os.path.join(self.exp_dir,"Hyperparameters"),Hyperparameters,allow_pickle=True)
         print(f"Experiment {len(existing_exp_dir)}")
 
-    def create_word_sequence(self,grammar_list,Nd_rate):
+    def create_word_sequence(self):
         #create word sequence
-        # grammar_list : designate the order of attributes
-        # Nd_rate      : designate the rate of word sequence length
-        N_max = len(Nd_rate)
-        self.truth_T0 = np.array([0.5,0.2,0.3,0,0])
-        self.truth_T = np.array([[0,0.6,0.2,0.2,0,0],[0,0,0.5,0.3,0.1,0.1],[0,0,0,0.4,0.4,0.2],[0,0,0,0,0.7,0.3],[0,0,0,0,0,1],[0,0,0,0,0,1]])
-        """self.truth_T0 = np.array([1,0,0,0,0])
-        self.truth_T = np.array([[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1],[0,0,0,0,0,1]])"""
-        F_list = np.array(list(itertools.permutations(range(N_max),N_max)))
-        T_hat = [self.truth_T0[F[0]] * np.prod([self.truth_T[F[n-1]][F[n]] for n in range(1,N_max)])  for F in F_list]
-        T_hat /= np.sum(T_hat)
-        grammer_num = len(grammar_list)
-        D = len(self.w)
+        D,N_max = self.w.shape
         self.truth_F = np.zeros_like(self.w,dtype=np.int8)
-        self.N = np.zeros(self.D,dtype=np.int8)
+        self.N = np.zeros(D,dtype=np.int8)
         for d in range(D):
             self.truth_F[d][0] = np.random.choice(N_max,p=self.truth_T0)
             self.w[d][0] = self.w[d][self.truth_F[d][0]]
@@ -82,21 +73,21 @@ class CSL_VAE():
                     self.w[d][n] = self.w[d][self.truth_F[d][n]]
                     self.N[d] += 1
                     
-    def setting_learned_model(self,w,beta,file_name_option,mutual_iteration,model_dir,valid_list,grammar_list,Nd_rate):
+    def setting_learned_model(self,w,beta,file_name_option,mutual_iteration,model_dir):
         model_file = glob.glob(os.path.join(model_dir,"VAE_Module",f"mutual_iteration={mutual_iteration}_epoch=*.pth"))[0]
         self.vae_module.load_state_dict(torch.load(model_file))
         self.csl_module.setting_parameters(w,z=np.zeros((self.D,self.VAE_Module_parameters["latent_dim"])),N_list=self.N,mutual_iteration=mutual_iteration,model_dir=model_dir)
 
     def learn(self):
         self.experimental_setting()
-        reset_CSL = True
-        word_sequence_info = {"valid_list":self.valid_list,"grammar_list":self.grammar_list,"Nd_rate":self.Nd_rate,"truth_F":self.truth_F,"truth_T0":self.truth_T0,"truth_T":self.truth_T}
+        reset_CSL = False
+        word_sequence_info = {"valid_list":self.valid_list,"truth_F":self.truth_F,"truth_T0":self.truth_T0,"truth_T":self.truth_T}
         np.save(os.path.join(self.exp_dir,"word sequence setting"),word_sequence_info,allow_pickle=True)
-        for i in range(self.mutual_iteration_number):
+        for i in range(self.mutual_iteration_number+1):
             print(f"Start Mutural Iteration {i}")
             debug = False
             if debug :
-                model_file = glob.glob(os.path.join(self.root_dir,"exp19/model/VAE_Module",f"mutual_iteration={0}_epoch=*.pth"))[0]
+                model_file = glob.glob(os.path.join("exp_CSL_VAE","exp2/model/VAE_Module",f"mutual_iteration={0}_epoch=*.pth"))[0]
                 self.vae_module.load_state_dict(torch.load(model_file))
                 self.vae_module = self.vae_module.to(device)
                 z_list = []
@@ -111,17 +102,17 @@ class CSL_VAE():
             self.vae_module.prior_mu=torch.from_numpy(phi_hat[0]).clone().to(device)
             self.vae_module.prior_logvar=torch.from_numpy(phi_hat[1]).clone().to(device).log()
         
-    def img2wrd(self,o_star,EOS):
+    def img2wrd(self,o_star,sampling_method="sequential"):
         o_star = torch.unsqueeze(o_star,0)
-        z_star,_,_ = self.vae_module.encode(o_star)
-        z_star = z_star.detach().numpy()[0]
+        z_star,_,_ = self.vae_module.encode(o_star.to(device))
+        z_star = z_star.to("cpu").detach().numpy()[0]
         c_star = self.csl_module.img2wrd_sampling_c(z_star,sampling_flag=False)
-        F_star = self.csl_module.img2wrd_sampling_F(EOS)
+        F_star = self.csl_module.img2wrd_sampling_F(sampling_method)
         w_star = self.csl_module.img2wrd_sampling_w(c_star,F_star)
         return w_star
 
     def wrd2img(self,w_star):
-        F_star = self.csl_module.wrd2img_sampling_F(w_star)
+        F_star = self.csl_module.wrd2img_sampling_F(w_star,sampling_method="sequential")
         c_star = self.csl_module.wrd2img_sampling_c(w_star, F_star)
         #c_star = self.csl_module.wrd2img_sampling_c_joint_F(w_star,sampling_flag=False)
         z_star = self.csl_module.wrd2img_sampling_z(c_star,sampling_flag=False)
@@ -130,28 +121,40 @@ class CSL_VAE():
         o_star = self.vae_module.decode(z_star)[0]
         return o_star
 
-batch_size = 500
 file_name_option = None
 dataset_name = "3dshapes"
-file_name_option ="three_view_point_88844"
-dup_num = 1
-shift_rate = 0.01
+file_name_option ="six_view_point_66644_2"
 Attribute_num = 5
-file_name_option += f"×{dup_num}_shift_{shift_rate}"
+
 label = np.load(f"dataset/{dataset_name}_hsv_labels_{file_name_option}.npy")
 w=label_to_vocab(label[:,:5])
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #Experimenttal Setting
-mutual_iteration_number = 15
-valid_list = [[3,6,11,16,20],[0,5,14,17,22],[4,7,12,16,19],[1,9,10,18,21]]
-grammar_list = [[0,1,2,3,4],[1,0,2,3,4],[0,1,3,2,4],[1,0,3,2,4],[2,3,4,0,1],[2,3,4,1,0],[3,2,4,0,1],[3,2,4,1,0]]
+mutual_iteration_number_list = [0,10]
+truth_category_num_list = [6,6,6,4,4]
+valid_num = 10
 latent_dim = 10
-CSL_Module_parameters = {"MAXITER":300,"A":latent_dim,"K":15,"alpha_T":1,"alpha_theta":0.1,"alpha_T0":1,"alpha_pi":1,"m":0,"tau":0.01,"a_lam":10,"b_lam":10}
-VAE_Module_parameters = {"beta":16,"latent_dim":latent_dim,"linear_dim":1024,"epoch":3000,"image_size":64,"batch_size":500}
+valid_list = [[np.random.randint(sum(truth_category_num_list[:i]),sum(truth_category_num_list[:i+1])) for i in range(len(truth_category_num_list))] for v in range(valid_num)]
 
-Nd_rate = [0, 0, 0, 0, 1]
+CSL_Module_parameters = {"MAXITER":100,"A":latent_dim,"K":10,"alpha_T":1,"alpha_theta":1,"alpha_T0":1,"alpha_pi":1,"m":0,"tau":0.01,"a_lam":10,"b_lam":10}
+VAE_Module_parameters_list = [{"beta":16,"latent_dim":latent_dim,"linear_dim":1024,"epoch":2000,"image_size":64,"batch_size":100},{"beta":0.01,"latent_dim":latent_dim,"linear_dim":1024,"epoch":2000,"image_size":64,"batch_size":100}]
+
+#bigram_grammar = {"truth_T0":np.array([0.5,0.2,0.3,0,0]),"truth_T":np.array([[0,0.6,0.2,0.2,0,0],[0,0,0.5,0.3,0.1,0.1],[0,0,0,0.4,0.4,0.2],[0,0,0,0,0.7,0.3],[0,0,0,0,0,1],[0,0,0,0,0,1]])}
+bigram_grammar = {"truth_T0":np.array([1,0,0,0,0]),"truth_T":np.array([[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1],[0,0,0,0,0,1]])}
+
+setting_condition = True
+condition_exp = 2
+
+if setting_condition:
+    exp_dir = f"exp_CSL_VAE/exp{condition_exp}"
+    word_sequence_setting_file = os.path.join(exp_dir,"word sequence setting.npy")
+    data = np.load(word_sequence_setting_file,allow_pickle=True).item()
+    valid_list,_,truth_T0,truth_T = data.values()
+    bigram_grammar = {"truth_T0":truth_T0,"truth_T":truth_T}
 
 if __name__ == "__main__":
-    csl_vae = CSL_VAE(file_name_option,mutual_iteration_number,CSL_Module_parameters,VAE_Module_parameters,valid_list,grammar_list,Nd_rate)
-    csl_vae.learn()
+    for mutual_iteration_number in mutual_iteration_number_list:
+        for VAE_Module_parameters in VAE_Module_parameters_list:
+            csl_vae = CSL_VAE(file_name_option,mutual_iteration_number,CSL_Module_parameters,VAE_Module_parameters,valid_list)
+            csl_vae.learn()

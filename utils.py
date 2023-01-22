@@ -127,9 +127,9 @@ def create_dataloader(batch_size,file_name_option = "full", valid_list = [],khot
     full_shuffle_loader = torch.utils.data.DataLoader(full_dataset, batch_size=batch_size,shuffle=True)
     valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=batch_size,shuffle=False)
     if khot_flag:
-        return train_loader,valid_loader,train_shuffle_loader,train_dataset.label,full_dataloader,full_shuffle_loader
+        return train_loader,valid_loader,train_shuffle_loader,train_dataset.label,full_dataloader,full_shuffle_loader,full_dataset,train_dataset,valid_dataset
     else:
-        return train_loader,valid_loader,train_shuffle_loader,train_dataset.label[:,:5],full_dataloader,full_shuffle_loader
+        return train_loader,valid_loader,train_shuffle_loader,train_dataset.label[:,:5],full_dataloader,full_shuffle_loader,full_dataset,train_dataset,valid_dataset
 
 
 def VAE_model(beta,latent_dim,device,linear_dim,dataset_name):

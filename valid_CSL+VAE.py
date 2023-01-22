@@ -56,7 +56,7 @@ def plot_anime(n):
 batch_size = 500
 file_name_option = None
 dataset_name = "3dshapes"
-file_name_option = "three_view_point_88844"
+file_name_option = "six_view_point_66644"
 dup_num = 10
 shift_rate = 0.01
 

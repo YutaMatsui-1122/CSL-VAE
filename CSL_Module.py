@@ -39,7 +39,7 @@ class CSL_Module():
     self.F = np.random.randint(0,self.A,size = (self.D,self.N_max))
     self.F = np.array([[np.random.randint(0,self.A) if n<self.N[d] else self.A for n in range(self.N_max)]for d in range(self.D)])
     self.T0 = np.random.dirichlet(np.repeat(self.alpha_T0,self.A))
-    self.T = np.random.dirichlet(np.repeat(self.alpha_T0,self.A),size = self.A)
+    self.T = np.random.dirichlet(np.repeat(self.alpha_T,self.A+1),size = self.A)
     self.theta = np.random.dirichlet(np.repeat(self.alpha_theta, self.V),size =self.L)
     self.pi = np.random.dirichlet(np.repeat(self.alpha_pi,self.K),size = self.A)
     self.lam = np.full(shape=(self.A,self.K),fill_value=10.0)
@@ -47,6 +47,8 @@ class CSL_Module():
     self.c = np.array([np.random.choice(self.K,p=self.pi[a],size = self.D) for a in range(self.A)]).T
 
   def receive_z(self,z):
+    self.c = np.array([np.random.choice(self.K,p=self.pi[a],size = self.D) for a in range(self.A)]).T
+    self.F = np.array([[np.random.randint(0,self.A) if n<self.N[d] else self.A for n in range(self.N_max)]for d in range(self.D)])
     self.z = z
   
   def set_parameters_for_economizing(self):
@@ -71,11 +73,11 @@ class CSL_Module():
       self.F[d][0] = np.random.choice(self.A,p=T0_hat)
       for n in range(1,self.N[d]):
         if n == (self.N[d]-1):
-          theta_hat = self.T[self.F[d][n-1]] * self.theta[theta_index_per_a,self.w[d][n]]
+          theta_hat = self.T[self.F[d][n-1]][:self.A] * self.theta[theta_index_per_a,self.w[d][n]]
           theta_hat /= np.sum(theta_hat)
           self.F[d][n] = np.random.choice(self.A,p=theta_hat)
         else:
-          theta_hat = self.T[self.F[d][n-1]] * self.T[:,self.F[d][n+1]] * self.theta[theta_index_per_a,self.w[d][n]]
+          theta_hat = self.T[self.F[d][n-1]][:self.A] * self.T[:,self.F[d][n+1]] * self.theta[theta_index_per_a,self.w[d][n]]
           theta_hat /= np.sum(theta_hat)
           self.F[d][n] = np.random.choice(self.A,p=theta_hat)
 
@@ -87,7 +89,7 @@ class CSL_Module():
     for a in range(self.A):
       index_d,index_n = np.where(self.F[:,:self.N_max-1]==a)
       index_n+=1
-      alpha_T_hat = np.bincount(self.F[index_d,index_n],minlength=self.A)[:self.A] + self.alpha_T
+      alpha_T_hat = np.bincount(self.F[index_d,index_n],minlength=self.A+1) + self.alpha_T
       self.T[a] = np.random.dirichlet(alpha_T_hat)  
 
   def sampling_theta(self):
@@ -118,8 +120,7 @@ class CSL_Module():
 
   def sampling_c(self):
     log_theta = np.log(self.theta)
-    log_pi = np.log(self.pi)
-    
+    log_pi = np.log(self.pi)    
     for a in range(self.A):
       logpdf_kd = np.array([self.logpdf(self.z[:,a],self.mu[a][k],self.lam[a][k]) for k in range(self.K)]).T
       for d in range(self.D):
@@ -147,14 +148,24 @@ class CSL_Module():
         c_star[a] = np.argmax(pi_hat)
     return c_star
   
-  def img2wrd_sampling_F(self,EOS):
+  def img2wrd_sampling_F(self,sampling_method = "sequential"):
     #F_list = np.array(list(itertools.product(range(self.A),repeat=N_star)))
-    F_star = []
-    F_star.append(np.random.choice(self.A,p= self.T0))
-    for n in range(1,self.N_max):
-      F_star.append(np.random.choice(self.A,p= self.T[F_star[n-1]]))
-      if F_star[n]==EOS:
-        break
+    if type(sampling_method)==int:
+      N_star = sampling_method
+      T_hat = [self.T0[F[0]] * np.prod([self.T[F[n-1]][F[n]] for n in range(1,N_star)])  for F in self.F_list[N_star]]
+      T_hat /= np.sum(T_hat)
+      F_star = self.F_list[N_star][np.random.choice(len(T_hat),p=T_hat)]
+
+    elif sampling_method == "sequential":
+      F_star = []
+      F_star.append(np.random.choice(self.A,p= self.T0))
+      for n in range(1,self.N_max):
+        F_star_n = np.random.choice(self.A+1,p= self.T[F_star[n-1]])
+        if F_star_n==self.A: #if EOS
+          break
+        F_star.append(F_star_n)
+      F_star = np.array(F_star)
+      
     '''F_list = np.array(list(itertools.permutations(range(self.A),N_star)))
     T_hat = [self.T0[F[0]] * np.prod([self.T[F[n-1]][F[n]] for n in range(1,N_star)])  for F in F_list]
     T_hat /= np.sum(T_hat)
@@ -169,13 +180,22 @@ class CSL_Module():
       w_star[n] = np.random.choice(self.V,p=self.theta[F_star[n]*self.K + c_star[F_star[n]]])
     return w_star
 
-  def wrd2img_sampling_F(self,w_star):
+  def wrd2img_sampling_F(self,w_star,sampling_method = "simultaneous"):
     N_star = len(w_star)
-    F_star = np.zeros(N_star,dtype=np.int8)
-    T_hat = [np.prod([self.sum_theta_aw[F[n]][w_star[n]] for n in range(N_star)]) * self.T0[F[0]] * np.prod([self.T[F[n-1]][F[n]] for n in range(1,N_star)])  for F in self.F_list[N_star]]
-    T_hat /= np.sum(T_hat)
-    F_star = self.F_list[N_star][np.random.choice(len(T_hat),p=T_hat)]
-    F_star = np.array(self.F_list[N_star][np.argmax(T_hat)])
+    if sampling_method == "simultaneous":
+      T_hat = [np.prod([self.sum_theta_aw[F[n]][w_star[n]] for n in range(N_star)]) * self.T0[F[0]] * np.prod([self.T[F[n-1]][F[n]] for n in range(1,N_star)])  for F in self.F_list[N_star]]
+      T_hat /= np.sum(T_hat)
+      F_star = self.F_list[N_star][np.random.choice(len(T_hat),p=T_hat)]
+      F_star = np.array(self.F_list[N_star][np.argmax(T_hat)])
+    elif sampling_method == "sequential":
+      F_star = np.zeros(N_star,dtype=np.int8)
+      T0_hat = [self.sum_theta_aw[a][w_star[0]]*self.T0[a] for a in range(self.A)]
+      T0_hat /= np.sum(T0_hat)
+      F_star[0] = np.random.choice(self.A,p=T0_hat)
+      F_star[0] = np.argmax(T0_hat)    
+      for n in range(1,N_star):
+        T_hat = [self.sum_theta_aw[a][w_star[n]]*self.T[F_star[n-1]][a] for a in range(self.A)]
+        F_star[n] = np.argmax(T_hat)
     return F_star
     
   def wrd2img_sampling_c_joint_F(self,w_star,sampling_flag=True):
@@ -227,8 +247,8 @@ class CSL_Module():
       self.receive_z(z)
     for i in range(self.MAXITER):
       s = time.time()
-      self.sampling_F()
       self.sampling_c()
+      self.sampling_F()      
       self.sampling_T0()
       self.sampling_T()
       self.sampling_theta()
@@ -236,6 +256,7 @@ class CSL_Module():
       self.sampling_mu_lam()
       
       if i==0 or (i+1) % (self.MAXITER // 5) ==0 or i==self.MAXITER-1:
+      #if i==0 or (i+1) % 2 ==0 or i==self.MAXITER-1:
         print(i+1,f"time:{np.round(time.time()-s,decimals=3)}",calc_ARI(self.c,truth_category))
         existing_file = glob.glob(os.path.join(model_dir,f"iter=*_mutual_iteration={mutual_iteration}.npy"))
         np.save(os.path.join(model_dir,f"iter={i+1}_mutual_iteration={mutual_iteration}"),{"z":self.z,"w":self.w,"F":self.F,"T0":self.T0,"T":self.T,"theta":self.theta,"pi":self.pi,"mu":self.mu,"lam":self.lam,"c":self.c})

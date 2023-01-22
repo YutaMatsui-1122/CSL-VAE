@@ -25,7 +25,7 @@ class VAE_Module(nn.Module):
     def __init__(self,VAE_Module_parameters,file_name_option,valid_list):
         super(VAE_Module, self).__init__()
         #Setting Network Architecture
-        self.dataloader,self.valid_loader,self.shuffle_dataloader,self.w,_,_= create_dataloader(VAE_Module_parameters["batch_size"],file_name_option,valid_list)
+        self.dataloader,self.valid_loader,self.shuffle_dataloader,self.w,_,_,_,_,_= create_dataloader(VAE_Module_parameters["batch_size"],file_name_option,valid_list)
         self.beta,self.latent_dim,self.linear_dim,self.epoch,self.image_size,self.batch_size = VAE_Module_parameters.values()
         self.initial_beta = np.copy(self.beta)
         layer = 4
@@ -139,7 +139,7 @@ class VAE_Module(nn.Module):
                 optimizer.step()
             loss_list = np.append(loss_list,train_loss / self.D)
             if i==0 or (i+1) % (self.epoch // 5) == 0 or i == (self.epoch-1):
-                print('====> Beta: {} Epoch: {} Average loss: {:.4f}  Learning time:{}s'.format(np.round(self.beta,2), i+1, train_loss / self.D,round(time.time()-s)))
+                print('====> Beta: {} Epoch: {} Average loss: {:.4f}  Learning time:{}s'.format(np.round(self.beta,2), i+1, train_loss / self.D,np.round(time.time()-s,2)))
                 self.save_model(model,mutual_iteration,i+1)
         z_list = []
         for data,_,_ in self.dataloader:
