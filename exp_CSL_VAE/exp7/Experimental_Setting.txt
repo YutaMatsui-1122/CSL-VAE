@@ -1,0 +1,32 @@
+Global parapeters
+  Mutual Iteration   : 0
+  file name option   : six_view_point_66644_2
+  valid list         : [[2, 8, 13, 18, 23], [5, 8, 13, 19, 24], [3, 9, 14, 21, 23], [0, 11, 14, 18, 24], [1, 10, 16, 19, 25], [5, 9, 12, 19, 24], [2, 7, 17, 18, 22], [4, 8, 17, 20, 23], [3, 8, 16, 19, 25], [4, 8, 12, 19, 23]]
+  truth T            : [[0.  0.6 0.2 0.2 0.  0. ]
+ [0.  0.  0.5 0.3 0.1 0.1]
+ [0.  0.  0.  0.4 0.4 0.2]
+ [0.  0.  0.  0.  0.7 0.3]
+ [0.  0.  0.  0.  0.  1. ]
+ [0.  0.  0.  0.  0.  1. ]]
+  truth T0           : [0.5 0.2 0.3 0.  0. ]
+
+CSL Module parapeters
+  MAXITER            : 100
+  A                  : 10
+  K                  : 10
+  alpha_T            : 1
+  alpha_theta        : 1
+  alpha_T0           : 1
+  alpha_pi           : 1
+  m                  : 0
+  tau                : 0.01
+  a_lam              : 10
+  b_lam              : 10
+
+VAE Module parapeters
+  beta               : 16
+  latent_dim         : 10
+  linear_dim         : 1024
+  epoch              : 2000
+  image_size         : 64
+  batch_size         : 100

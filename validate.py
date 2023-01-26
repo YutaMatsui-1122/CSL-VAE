@@ -13,12 +13,18 @@ import cv2
 from betaVAE import betaVAE
 from utils import *
 from heatmap import *
+import argparse
+
+parser = argparse.ArgumentParser(description='')
+parser.add_argument('--exp', required=True, help="experiment number")
+parser.add_argument('--MI_list', required=True, nargs="*", type=int, help='a list of Mutual Inference Iteration number')
+args = parser.parse_args()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 batch_size = 500
 file_name_option = None
 dataset_name = "3dshapes"
-file_name_option = "six_view_point_66644"
+file_name_option = "six_view_point_66644_2"
 word = label_to_word(file_name_option)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -34,8 +40,8 @@ def calc_ARI_EAR(label,truth_labels,F,truth_F):
     A = np.max(F)
     N = np.array([np.count_nonzero(truth_F[d]<5) for d in range(D)])
     truth_F = np.array([[np.array(ARI_index)[truth_F[d][n]] if n<N[d] else A  for n in range(N_max)] for d in range(D)])
-    print(np.sum([np.count_nonzero(truth_F[d][:N[d]]==F[d][:N[d]])for d in range(D)])/np.sum(N))
-    return np.round(ARI_list,decimals=5), np.array(ARI_index)
+    EAR = np.sum([np.count_nonzero(truth_F[d][:N[d]]==F[d][:N[d]])for d in range(D)])/np.sum(N)
+    return ARI_list, np.array(ARI_index),np.round(EAR,decimals=3)
 
 def plot_category_image(result_dir,image,c,ARI_index,column_num=3, row_num=3):
     attribute_name_list = ["Floor color","Wall color","Object color","Size","Shape"]
@@ -45,8 +51,9 @@ def plot_category_image(result_dir,image,c,ARI_index,column_num=3, row_num=3):
             index = np.where(c[:,a]==k)[0]
             images = image[index[np.random.randint(len(index),size = column_num*row_num)]]
             fig, axes = plt.subplots(row_num,column_num, figsize=((row_num*3,column_num*3)))
-            plt.suptitle(r"$(a=$"+f"{a}, "+r"$c=$"+f"{k})",size=20)
+            #plt.suptitle(r"$(a=$"+f"{a}, "+r"$c=$"+f"{k})",size=20)
             plt.subplots_adjust(wspace=0.05, hspace=0.05)
+            fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
             i = 0
             for column in range(column_num):
                 for row in range(row_num):
@@ -54,14 +61,18 @@ def plot_category_image(result_dir,image,c,ARI_index,column_num=3, row_num=3):
                     axes[column,row].tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False)
                     axes[column,row].tick_params(bottom=False, left=False, right=False, top=False)
                     i += 1
-            plt.savefig(os.path.join(result_dir,f"a={a}_k={k}"))
+            save_file_name = r"$a$"+f"={a}"+r",c"+f"={k}"+".svg"
+            plt.savefig(os.path.join(result_dir,save_file_name))
 
 def logpdf(z,mu,lam):
     return -0.5 * (lam*(z-mu)**2-np.log(lam)+np.log(2*math.pi))
 
-for iter in np.arange(0,20):
+
+exp = args.exp
+
+for iter in args.MI_list:
     print("Mutual Iteration:",iter)
-    exp = 2
+    
     exp_dir = f"exp_CSL_VAE/exp{exp}"
     model_dir = os.path.join(exp_dir,"model")
     result_dir = os.path.join(exp_dir,"result")
@@ -86,15 +97,15 @@ for iter in np.arange(0,20):
     T0 = data["T0"]
     pi = data["pi"]
     c = data["c"]
-    ARI_list, ARI_index = calc_ARI_EAR(c,truth_category,F,truth_F)
+    ARI_list, ARI_index,EAR = calc_ARI_EAR(c,truth_category,F,truth_F)
     print(plot_category_image(result_MI_dir,train_dataset.image,c,ARI_index,3,3))
-    print(pi)
+    print(lam)
     plt.figure()
     sns.heatmap(T)
     plt.savefig(os.path.join(result_MI_dir,f"Heatmap of T"))
     plt.close()
     sns.heatmap(theta)
-    print("ARI a:",ARI_list,ARI_index)
+    print("ARI a:",ARI_list,ARI_index,EAR)
     A = 10
     K = 10
     theta_a = []
@@ -105,23 +116,20 @@ for iter in np.arange(0,20):
         category_list = []
         for k in range(K):            
             if k in data_existing_category:
-                index.append(f"a={a}, c={k}")
+                index.append(r"$a$"+f"={a}"+r",c"+f"={k}")
                 theta_a.append(theta[a*K+k])
                 category_list.append(k)
         category_num_dict.append(category_list)
-    print(category_num_dict)
     columns = word[:theta.shape[1]]
     theta = np.stack(theta_a)
-    print(theta_a[0].shape)
-    print(theta.shape)
     if len(theta.shape)==2:
         heat_theta = pd.DataFrame(theta,columns=columns,index=index)
     else:
         heat_theta = pd.DataFrame(np.reshape(theta,(-1,theta.shape[2])))
-
+    truth_attribute_num_list = [6,6,6,4,4]
     chained_frame = pd.DataFrame(theta,columns=columns)
     heat_map_filepath = os.path.join(result_MI_dir,"Sorted heatmap of theta.pdf")
-    diagonallike_heatmap(filepath=heat_map_filepath,dataframe=heat_theta,each_attribute_cats=category_num_dict,chained_frame=chained_frame)
+    diagonallike_heatmap(filepath=heat_map_filepath,dataframe=heat_theta,each_attribute_cats=category_num_dict,chained_frame=chained_frame,truth_attribute_num_list=truth_attribute_num_list)
     
     truth_F = np.tile(np.arange(5),(F.shape[0],1))
     cw= np.stack((c[:,8][:20000],w[:,1][:20000])).T

@@ -71,6 +71,7 @@ def diagonallike_heatmap(
     chained_frame:pd.DataFrame=None,
     each_attribute_cats:List[Set[Union[str, int, float]]]=None,
     square=False,
+    truth_attribute_num_list = None
 )->pd.DataFrame:
     """ 1-Agent 分のヒートマップを描画する
 
@@ -121,9 +122,11 @@ def diagonallike_heatmap(
     ## step2. 描画の準備
     cmap = generate_cmap(["white", "red"])
     fig, axes = plt.subplots()
-    axes.tick_params(bottom=False, top=True, labelbottom=False, labeltop=True, labelsize=4)
+    axes.tick_params(bottom=False, top=True, labelbottom=False, labeltop=True, labelsize=6)
+
 
     ## step3. 描画する
+
     sns.heatmap(
         dataframe, square=square, cmap=cmap, vmax=1, vmin=0
     )
@@ -137,7 +140,12 @@ def diagonallike_heatmap(
     line_pos = 0
     for var_z in each_attribute_cats:
         line_pos += len(var_z)
-        axes.axhline(y=line_pos, linewidth=1, color="black")
+        axes.axhline(y=line_pos, linewidth=0.5, color="black")
+    
+    vline_pos = 0
+    for truth_attri_num in truth_attribute_num_list:
+        vline_pos += truth_attri_num
+        axes.axvline(x=vline_pos, linewidth=0.5, color="black")
 
     fig.savefig(filepath, bbox_inches="tight")
     plt.close()

@@ -61,10 +61,12 @@ class CSL_VAE():
         D,N_max = self.w.shape
         self.truth_F = np.zeros_like(self.w,dtype=np.int8)
         self.N = np.zeros(D,dtype=np.int8)
+        total_w_num = 0
         for d in range(D):
             self.truth_F[d][0] = np.random.choice(N_max,p=self.truth_T0)
             self.w[d][0] = self.w[d][self.truth_F[d][0]]
             self.N[d] += 1
+            total_w_num += 1
             for n in range(1,N_max):
                 self.truth_F[d][n] = np.random.choice(N_max+1,p=self.truth_T[self.truth_F[d][n-1]])
                 if self.truth_F[d][n] == N_max:
@@ -72,6 +74,7 @@ class CSL_VAE():
                 else:
                     self.w[d][n] = self.w[d][self.truth_F[d][n]]
                     self.N[d] += 1
+                    total_w_num += 1
                     
     def setting_learned_model(self,w,beta,file_name_option,mutual_iteration,model_dir):
         model_file = glob.glob(os.path.join(model_dir,"VAE_Module",f"mutual_iteration={mutual_iteration}_epoch=*.pth"))[0]
@@ -131,7 +134,7 @@ w=label_to_vocab(label[:,:5])
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #Experimenttal Setting
-mutual_iteration_number_list = [0,10]
+mutual_iteration_number_list = [10,0]
 truth_category_num_list = [6,6,6,4,4]
 valid_num = 10
 latent_dim = 10
@@ -150,8 +153,8 @@ if setting_condition:
     exp_dir = f"exp_CSL_VAE/exp{condition_exp}"
     word_sequence_setting_file = os.path.join(exp_dir,"word sequence setting.npy")
     data = np.load(word_sequence_setting_file,allow_pickle=True).item()
-    valid_list,_,truth_T0,truth_T = data.values()
-    bigram_grammar = {"truth_T0":truth_T0,"truth_T":truth_T}
+    valid_list,_,_,_ = data.values()
+    #bigram_grammar = {"truth_T0":truth_T0,"truth_T":truth_T}
 
 if __name__ == "__main__":
     for mutual_iteration_number in mutual_iteration_number_list:
