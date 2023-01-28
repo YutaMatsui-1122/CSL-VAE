@@ -59,7 +59,23 @@ def plot_anime(n):
             im = HSV2RGB(im)
             axes[i][j+2].imshow(im)
 
-batch_size = 500
+def latent_traversal_fig(data,model,data_min_list, data_max_list):
+    traversal_num = 10
+    latent_dim = 10
+    _,mu,var,z = model(data.to(device))
+    
+    for d in range(latent_dim):
+        fig, axes = plt.subplots(1,traversal_num, figsize=((16,9)))
+        traversal_z_list = np.linspace(data_min_list[d],data_max_list[d],traversal_num)
+        for t in range(traversal_num):
+            z_traversal = z.to("cpu").detach()
+            z_traversal[0][d] = traversal_z_list[t]
+            recon_y=model.decode(z_traversal)
+            axes[t].imshow(HSV2RGB(recon_y[0].numpy()))
+        plt.savefig(result_MI_dir,f"z_{d}.pdf")
+    
+
+batch_size = 3000
 file_name_option = None
 dataset_name = "3dshapes"
 file_name_option = "six_view_point_66644_2"
@@ -67,7 +83,7 @@ file_name_option = "six_view_point_66644_2"
 ########## create dataloader  (Check "shuffle = True". If this value is False, the model cannot gain disentangled representation) #############
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-exp = 7
+exp = 8
 exp_dir = f"exp_CSL_VAE/exp{exp}"
 model_dir = os.path.join(exp_dir,"model")
 result_dir = os.path.join(exp_dir,"result")
@@ -90,11 +106,12 @@ for iter in [0]:
     fig, axes = plt.subplots(I,latent_dim+2, figsize=((16,9)))
     z_hist=np.empty((0,latent_dim))
     mu_hist=np.empty((0,latent_dim))
-    for num_batch, (data,label,_) in enumerate(shuffle_dataloader):
+    for num_batch, (data,label,_) in enumerate(dataloader):
         recon_x,mu,logvar,z = model(data.to(device))
         recon_x,mu,logvar,z = recon_x.to("cpu").detach().numpy(), mu.to("cpu").detach().numpy(), logvar.to("cpu").detach().numpy(), z.to("cpu").detach().numpy()
         z_hist = np.append(z_hist,z,axis=0)
-        mu_hist = np.append(mu_hist,mu,axis=0)                
+        mu_hist = np.append(mu_hist,mu,axis=0)
+    data = data[[300,500,1000,1333,2666]]
     traversal_z_list = np.array([np.linspace(np.min(mu_hist[:,i]),np.max(mu_hist[:,i]),len(z_trans)) for i in range(latent_dim)])
     ani = animation.FuncAnimation(fig, plot_anime,frames=len(z_trans)-1, interval=50)
     save_file_name=os.path.join(result_MI_dir,"latent_traversal.gif")
