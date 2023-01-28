@@ -134,7 +134,7 @@ w=label_to_vocab(label[:,:5])
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #Experimenttal Setting
-mutual_iteration_number_list = [10,0]
+mutual_iteration_number_list = [0]
 truth_category_num_list = [6,6,6,4,4]
 valid_num = 10
 latent_dim = 10

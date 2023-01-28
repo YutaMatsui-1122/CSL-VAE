@@ -18,4 +18,4 @@ color_list = ["red","orange","yellow","green","emerald green","cyan","symphony b
 size_list = [f"size={s}" for s in range(1,9)]
 shape_list = ["cube","cylinder","ball","pole"]
 orientation_list = [o for o in range(15)]
-label_word_correspondance = [[color+" floor" for color in color_list],[color+" wall" for color in color_list],[color+" object" for color in color_list],size_list,shape_list,orientation_list]
+label_word_correspondance = [[color+" floor" for color in color_list],[color+" wall" for color in color_list],[color for color in color_list],size_list,shape_list,orientation_list]

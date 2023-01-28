@@ -135,7 +135,7 @@ def cross_modal_inference_plt():
                     axes[i].tick_params(bottom=False, left=False, right=False, top=False)
                     axes[i].tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False)
                     axes[i].imshow(HSV2RGB(o_star))
-                plt.savefig(os.path.join(result_MI_dir,f"Wrd2img_{len(w_star)}_word"))
+                plt.savefig(os.path.join(result_MI_dir,f"Wrd2img_{len(w_star)}_word.svg"))
         #for iter in np.arange(20):
             existing_file = glob.glob(os.path.join(model_dir,f"CSL_Module/iter=*_mutual_iteration={iter}.npy"))[0]
             data = np.load(existing_file,allow_pickle=True).item()
@@ -147,22 +147,22 @@ def cross_modal_inference_plt():
             csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list)
             csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir)
             csl_vae.vae_module.to(device)
-            for i in range(2):
+            for i in [10,20,30,40,50,59]:
                 fig = plt.figure(figsize = (10,20))
-                Truth_word_sequence = ",  ".join(word[known_label[i]])
+                Truth_word_sequence = ",  ".join(word[unknown_label[i]])
                 xlabel = f"{Truth_word_sequence}"
                 for j in range(10):
-                    o_star = known_data[i]
+                    o_star = unknown_data[i]
                     w_star = csl_vae.img2wrd(o_star,sampling_method="sequential")
                     word_sequence=",  ".join(word[w_star])
                     xlabel+=f"\n\n{word_sequence}"
                 plt.title(f"Img2wrd (ML {iter})",fontsize=18)
-                plt.xlabel(xlabel,fontsize=18)
-                plt.imshow(HSV2RGB(known_data[i]))
+                plt.xlabel(xlabel,fontsize=18,loc="left")
+                plt.imshow(HSV2RGB(unknown_data[i]))
                 plt.tick_params(bottom=False, left=False, right=False, top=False)
                 plt.tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False)
                 print(os.path.join(result_MI_dir,f"Img2wrd_{i}"))
-                plt.savefig(os.path.join(result_MI_dir,f"Img2wrd_{i}"))
+                plt.savefig(os.path.join(result_MI_dir,f"Img2wrd_{i}.svg"))
 
             '''word_sequence_accuracy = []
             word_accuracy = []

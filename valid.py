@@ -11,7 +11,8 @@ from betaVAE import betaVAE
 from utils import HSV2RGB,VAE_model,create_dataloader
 import matplotlib.animation as animation
 from VAE_Module import VAE_Module
-from CSL_VAE import CSL_VAE,CSL_Module_parameters,VAE_Module_parameters
+from CSL_VAE import CSL_VAE
+
 
 debug = False
 
@@ -61,32 +62,28 @@ def plot_anime(n):
 batch_size = 500
 file_name_option = None
 dataset_name = "3dshapes"
-file_name_option = "five_view_point_55544"
-dup_num = 2
-shift_rate = 0.01
-file_name_option += f"×{dup_num}_shift_{shift_rate}"
+file_name_option = "six_view_point_66644_2"
 
 ########## create dataloader  (Check "shuffle = True". If this value is False, the model cannot gain disentangled representation) #############
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-exp = 28
+exp = 7
 exp_dir = f"exp_CSL_VAE/exp{exp}"
 model_dir = os.path.join(exp_dir,"model")
 result_dir = os.path.join(exp_dir,"result")
 os.makedirs(result_dir,exist_ok=True)
 word_sequence_setting_file = os.path.join(exp_dir,"word sequence setting.npy")
 data = np.load(word_sequence_setting_file,allow_pickle=True).item()
-valid_list,grammar_list,Nd_rate,truth_F,truth_T0,truth_T = data.values()
-dataloader,valid_loader,shuffle_dataloader,w,_,_= create_dataloader(batch_size,file_name_option,valid_list)
+valid_list,truth_F,truth_T0,truth_T = data.values()
+dataloader,valid_loader,shuffle_dataloader,w,_,_,_,_,_= create_dataloader(batch_size,file_name_option,valid_list)
 latent_dim = 10
 w = w.numpy()
-for iter in range(20):
+for iter in [0]:
     result_MI_dir = os.path.join(result_dir,f"MI{iter}")
     os.makedirs(result_MI_dir,exist_ok=True)
-
-    csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate)
-    csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir,valid_list=valid_list,grammar_list=grammar_list,Nd_rate=Nd_rate) 
-
+    CSL_Module_parameters,VAE_Module_parameters = np.load(f"exp_CSL_VAE/exp{exp}/Hyperparameters.npy",allow_pickle=True).item().values()
+    csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list)
+    csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir)
     model = csl_vae.vae_module.to(device)
     z_trans=np.arange(100) #Latent traversal range
     I=5
