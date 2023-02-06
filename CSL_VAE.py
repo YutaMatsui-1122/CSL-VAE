@@ -16,7 +16,7 @@ class CSL_VAE():
         self.truth_T0 = bigram_grammar["truth_T0"]
         self.truth_T = bigram_grammar["truth_T"]
         self.valid_list = valid_list
-        self.vae_module = VAE_Module(VAE_Module_parameters,self.file_name_option,self.valid_list)
+        self.vae_module = VAE_Module(VAE_Module_parameters,self.file_name_option,self.valid_list,send_mu=True)
         self.csl_module = CSL_Module(CSL_Module_parameters)
         self.w = self.vae_module.w.to('cpu').detach().numpy().copy()
         self.truth_category = self.w.copy()
@@ -134,19 +134,19 @@ w=label_to_vocab(label[:,:5])
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #Experimenttal Setting
-mutual_iteration_number_list = [0]
+mutual_iteration_number_list = [10]
 truth_category_num_list = [6,6,6,4,4]
 valid_num = 10
 latent_dim = 10
 valid_list = [[np.random.randint(sum(truth_category_num_list[:i]),sum(truth_category_num_list[:i+1])) for i in range(len(truth_category_num_list))] for v in range(valid_num)]
 
 CSL_Module_parameters = {"MAXITER":100,"A":latent_dim,"K":10,"alpha_T":1,"alpha_theta":1,"alpha_T0":1,"alpha_pi":1,"m":0,"tau":0.01,"a_lam":10,"b_lam":10}
-VAE_Module_parameters_list = [{"beta":16,"latent_dim":latent_dim,"linear_dim":1024,"epoch":2000,"image_size":64,"batch_size":100},{"beta":0.01,"latent_dim":latent_dim,"linear_dim":1024,"epoch":2000,"image_size":64,"batch_size":100}]
+VAE_Module_parameters_list = [{"beta":20,"latent_dim":latent_dim,"linear_dim":1024,"epoch":5000,"image_size":64,"batch_size":100}]
 
-#bigram_grammar = {"truth_T0":np.array([0.5,0.2,0.3,0,0]),"truth_T":np.array([[0,0.6,0.2,0.2,0,0],[0,0,0.5,0.3,0.1,0.1],[0,0,0,0.4,0.4,0.2],[0,0,0,0,0.7,0.3],[0,0,0,0,0,1],[0,0,0,0,0,1]])}
-bigram_grammar = {"truth_T0":np.array([1,0,0,0,0]),"truth_T":np.array([[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1],[0,0,0,0,0,1]])}
+bigram_grammar = {"truth_T0":np.array([0.5,0.2,0.3,0,0]),"truth_T":np.array([[0,0.6,0.2,0.2,0,0],[0,0,0.5,0.3,0.1,0.1],[0,0,0,0.4,0.4,0.2],[0,0,0,0,0.7,0.3],[0,0,0,0,0,1],[0,0,0,0,0,1]])}
+#bigram_grammar = {"truth_T0":np.array([1,0,0,0,0]),"truth_T":np.array([[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1],[0,0,0,0,0,1]])}
 
-setting_condition = True
+setting_condition = False
 condition_exp = 2
 
 if setting_condition:

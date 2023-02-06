@@ -61,7 +61,7 @@ def plot_category_image(result_dir,image,c,ARI_index,column_num=3, row_num=3):
                     axes[column,row].tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False)
                     axes[column,row].tick_params(bottom=False, left=False, right=False, top=False)
                     i += 1
-            save_file_name = r"$a$"+f"={a}"+r",c"+f"={k}"+".svg"
+            save_file_name = f"a={a},c={k}.svg"
             plt.savefig(os.path.join(result_dir,save_file_name))
 
 def logpdf(z,mu,lam):

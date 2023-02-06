@@ -137,7 +137,7 @@ def cross_modal_inference_plt():
                     axes[i//2][i%2].tick_params(bottom=False, left=False, right=False, top=False)
                     axes[i//2][i%2].tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False)
                     axes[i//2][i%2].imshow(HSV2RGB(o_star))
-                plt.savefig(os.path.join(result_MI_dir,f"Wrd2img_{len(w_star)}_word.svg"))
+                plt.savefig(os.path.join(result_MI_dir,f"Wrd2img_{len(w_star)}_word.pdf"))
         #for iter in np.arange(20):
             existing_file = glob.glob(os.path.join(model_dir,f"CSL_Module/iter=*_mutual_iteration={iter}.npy"))[0]
             data = np.load(existing_file,allow_pickle=True).item()

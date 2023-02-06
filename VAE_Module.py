@@ -22,12 +22,13 @@ class UnFlatten(nn.Module):
         return input.view(-1,self.last_channel, self.flatten_dim, self.flatten_dim)
 
 class VAE_Module(nn.Module):
-    def __init__(self,VAE_Module_parameters,file_name_option,valid_list):
+    def __init__(self,VAE_Module_parameters,file_name_option,valid_list,send_mu=False):
         super(VAE_Module, self).__init__()
         #Setting Network Architecture
         self.dataloader,self.valid_loader,self.shuffle_dataloader,self.w,_,_,_,_,_= create_dataloader(VAE_Module_parameters["batch_size"],file_name_option,valid_list)
         self.beta,self.latent_dim,self.linear_dim,self.epoch,self.image_size,self.batch_size = VAE_Module_parameters.values()
         self.initial_beta = np.copy(self.beta)
+        self.send_mu = send_mu
         layer = 4
         image_channel=3
         en_channel=[image_channel,32,64,128,256]
@@ -107,6 +108,10 @@ class VAE_Module(nn.Module):
         BCE = F.binary_cross_entropy(recon_x, x, reduction='sum')
         if mutual_iteration==0:        
             KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp() )
+        elif self.send_mu:
+            batch_prior_mu.requires_grad = False
+            diff = mu - batch_prior_mu # μ_１ - μ_0
+            KLD = 0.5 * ((logvar.exp() + diff.pow(2) - logvar).sum(1) - self.latent_dim).sum()
         else:
             batch_prior_mu.requires_grad = False
             batch_prior_logvar.requires_grad = False
@@ -120,7 +125,7 @@ class VAE_Module(nn.Module):
 
     def learn(self,mutual_iteration,model_dir):
         model=copy.deepcopy(self.to(device))
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
         self.model_dir = model_dir
         loss_list = np.array([])
         #self.beta = self.initial_beta * (0.8)**mutual_iteration
@@ -128,9 +133,9 @@ class VAE_Module(nn.Module):
             train_loss = 0
             s=time.time()
             for data, _,batch_index in self.shuffle_dataloader:
-                data = Variable(data).to(device)
+                data = data.to(device)
                 optimizer.zero_grad()
-                recon_batch, mu, logvar, _ = model.forward(data)
+                recon_batch, mu, logvar, _ = model(data)
                 batch_prior_mu = self.prior_mu[batch_index]
                 batch_prior_logvar = self.prior_logvar[batch_index]
                 loss = model.loss_function(recon_batch, data, mu, logvar, batch_prior_mu,batch_prior_logvar ,mutual_iteration)
