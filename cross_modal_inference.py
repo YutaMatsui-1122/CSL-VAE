@@ -93,7 +93,7 @@ def cross_modal_inference_plt():
         for iter in MI_list:        
             result_MI_dir = os.path.join(result_dir,f"MI{iter}")
             os.makedirs(result_MI_dir,exist_ok=True)        
-            csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list)
+            csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list,grammar="skip")
             csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir) 
             fig, axes = plt.subplots(2,I, figsize=((I,2)))
             for i in range(I):
@@ -124,8 +124,8 @@ def cross_modal_inference_plt():
                 #axes2.set_title("infered image by CSL+VAE")
             plt.savefig(os.path.join(result_MI_dir,f"Wrd2img_known"))
 
-            I_oneword=4
-            fig, axes = plt.subplots(2,2, figsize=((2,2)))
+            I_oneword=10
+            fig, axes = plt.subplots(2,5, figsize=((5,2)))
             for words in [[0],[1,8],[4,9,14],[2,11,12,24],[3,6,16,18,24]]:
                 for i in range(I_oneword):
                     w_star = np.array(words)
@@ -133,11 +133,11 @@ def cross_modal_inference_plt():
                     word_sequence = ",  ".join(word[w_star])
                     #fig.suptitle(f"\"{word_sequence}\"",fontsize=3)
                     print(word_sequence)
-                    fig.subplots_adjust(wspace=0.1, hspace=0.1,left=0.05, right=0.95, bottom=0.05, top=0.95)
-                    axes[i//2][i%2].tick_params(bottom=False, left=False, right=False, top=False)
-                    axes[i//2][i%2].tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False)
-                    axes[i//2][i%2].imshow(HSV2RGB(o_star))
-                plt.savefig(os.path.join(result_MI_dir,f"Wrd2img_{len(w_star)}_word.pdf"))
+                    fig.subplots_adjust(wspace=0, hspace=0,left=0.05, right=0.95, bottom=0.05, top=0.95)
+                    axes[i//5][i%5].tick_params(bottom=False, left=False, right=False, top=False)
+                    axes[i//5][i%5].tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False)
+                    axes[i//5][i%5].imshow(HSV2RGB(o_star))
+                plt.savefig(os.path.join(result_MI_dir,f"Wrd2img_{len(w_star)}_word.svg"))
         #for iter in np.arange(20):
             existing_file = glob.glob(os.path.join(model_dir,f"CSL_Module/iter=*_mutual_iteration={iter}.npy"))[0]
             data = np.load(existing_file,allow_pickle=True).item()
@@ -146,7 +146,7 @@ def cross_modal_inference_plt():
             _,F_index=calc_ARI_EAR(c,truth_category,F,truth_F)   
             result_MI_dir = os.path.join(result_dir,f"MI{iter}")
             os.makedirs(result_MI_dir,exist_ok=True)
-            csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list)
+            csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list,grammar="skip")
             csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir)
             csl_vae.vae_module.to(device)
             for i in [0,7,14,21,28,35,42,49,56]:
@@ -168,7 +168,7 @@ def cross_modal_inference_plt():
                 fig = plt.figure(figsize = (5,5))
                 plt.imshow(HSV2RGB(unknown_data[i]))
                 plt.tick_params(labelbottom=False, labelleft=False, labelright=False, labeltop=False, bottom=False, left=False, right=False, top=False)
-                plt.savefig(os.path.join(result_MI_dir,f"Img2wrd_only_image_{i}.pdf"))
+                plt.savefig(os.path.join(result_MI_dir,f"Img2wrd_only_image_{i}.svg"))
 
 
             '''word_sequence_accuracy = []
@@ -293,7 +293,7 @@ def wrd2img_img2wrd_quant():
         f.close()
 
 
-# cross_modal_inference_plt()
-wrd2img_img2wrd_quant()
+cross_modal_inference_plt()
+#wrd2img_img2wrd_quant()
 #wrd2img_plt()
 #wrd2img_quant_eval()
