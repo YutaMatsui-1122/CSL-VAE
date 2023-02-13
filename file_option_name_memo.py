@@ -1,3 +1,5 @@
+import numpy as np
+
 file_name_option_dict = {
     "full" : [[], [], [], [], [], []],
     "color=half_or=left" : [[3,7,9], [3,7,9], [3,7,9], [], [], [8,9,10,11,12,13,14]],
@@ -19,3 +21,8 @@ size_list = [f"size={s}" for s in range(1,9)]
 shape_list = ["cube","cylinder","ball","pole"]
 orientation_list = [o for o in range(15)]
 label_word_correspondance = [[color+" floor" for color in color_list],[color+" wall" for color in color_list],[color for color in color_list],size_list,shape_list,orientation_list]
+
+grammar_list = {
+    "simple" : {"truth_T0":np.array([0.5,0.2,0.3,0,0]),"truth_T":np.array([[0,0.6,0.2,0.2,0,0],[0,0,0.5,0.3,0.1,0.1],[0,0,0,0.4,0.4,0.2],[0,0,0,0,0.7,0.3],[0,0,0,0,0,1],[0,0,0,0,0,1]])},
+    "skip" : {"truth_T0":np.array([1,0,0,0,0]),"truth_T":np.array([[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1],[0,0,0,0,0,1]])}
+}

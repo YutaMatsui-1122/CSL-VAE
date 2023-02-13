@@ -33,7 +33,7 @@ class CSL_Module():
     self.w = w
     self.z = z
     self.D,self.N_max = self.w.shape
-    self.V = np.max(w)+1
+    self.V = np.max(self.w)+1
     self.L = self.A * self.K
     self.N = N_list
     self.F = np.random.randint(0,self.A,size = (self.D,self.N_max))

@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from image_classification_net import Image_Classification_Net
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 
 parser = argparse.ArgumentParser(description='')
@@ -201,8 +201,6 @@ def wrd2img_img2wrd_quant():
         
         dataloader,valid_loader,shuffle_dataloader,w,_,full_shuffle_loader,full_dataset,_,_= create_dataloader(batch_size,file_name_option,valid_list)
         w = w.to('cpu').detach().numpy().copy()
-        truth_category = np.copy(w)
-        new_data = False
         D=full_dataset.image.shape[0]
 
         N_star = 5
@@ -217,7 +215,7 @@ def wrd2img_img2wrd_quant():
                 print(exp,"Skip文法",f" , beta : {VAE_Module_parameters['beta']} , MI :{iter}")
             result_MI_dir = os.path.join(result_dir,f"MI{iter}")
             os.makedirs(result_MI_dir,exist_ok=True)
-            csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list)
+            csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list,grammar="skip")
             csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir) 
             exec_num = 20
             temp_accuracy = np.empty(exec_num)
@@ -252,7 +250,7 @@ def wrd2img_img2wrd_quant():
             data = np.load(existing_file,allow_pickle=True).item()
             result_MI_dir = os.path.join(result_dir,f"MI{iter}")
             os.makedirs(result_MI_dir,exist_ok=True)
-            csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list)
+            csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list,grammar="skip")
             csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir)
             csl_vae.vae_module.to(device)
             exec_num = 20
@@ -295,7 +293,7 @@ def wrd2img_img2wrd_quant():
         f.close()
 
 
-cross_modal_inference_plt()
-#wrd2img_img2wrd_quant()
+# cross_modal_inference_plt()
+wrd2img_img2wrd_quant()
 #wrd2img_plt()
 #wrd2img_quant_eval()

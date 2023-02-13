@@ -7,16 +7,18 @@ import torch, glob,os
 from utils import *
 import numpy as np
 import matplotlib.pyplot as plt
+from file_option_name_memo import *
 
 class CSL_VAE():
-    def __init__(self,file_name_option,mutual_iteration_number,CSL_Module_parameters,VAE_Module_parameters,valid_list) -> None:
+    def __init__(self,file_name_option,mutual_iteration_number,CSL_Module_parameters,VAE_Module_parameters,valid_list,grammar) -> None:
         self.VAE_Module_parameters = VAE_Module_parameters
         self.CSL_Module_parameters = CSL_Module_parameters
         self.file_name_option = file_name_option
-        self.truth_T0 = bigram_grammar["truth_T0"]
-        self.truth_T = bigram_grammar["truth_T"]
+        self.grammar = grammar
+        self.truth_T0 = grammar_list[self.grammar]["truth_T0"]
+        self.truth_T = grammar_list[self.grammar]["truth_T"]
         self.valid_list = valid_list
-        self.vae_module = VAE_Module(VAE_Module_parameters,self.file_name_option,self.valid_list,send_mu=True)
+        self.vae_module = VAE_Module(VAE_Module_parameters,self.file_name_option,self.valid_list,send_mu=False)
         self.csl_module = CSL_Module(CSL_Module_parameters)
         self.w = self.vae_module.w.to('cpu').detach().numpy().copy()
         self.truth_category = self.w.copy()
@@ -57,25 +59,31 @@ class CSL_VAE():
         print(f"Experiment {len(existing_exp_dir)}")
 
     def create_word_sequence(self):
-        #create word sequence
-        D,N_max = self.w.shape
-        self.truth_F = np.zeros_like(self.w,dtype=np.int8)
-        self.N = np.zeros(D,dtype=np.int8)
-        total_w_num = 0
-        for d in range(D):
-            self.truth_F[d][0] = np.random.choice(N_max,p=self.truth_T0)
-            self.w[d][0] = self.w[d][self.truth_F[d][0]]
-            self.N[d] += 1
-            total_w_num += 1
-            for n in range(1,N_max):
-                self.truth_F[d][n] = np.random.choice(N_max+1,p=self.truth_T[self.truth_F[d][n-1]])
-                if self.truth_F[d][n] == N_max:
-                    self.w[d][n] = -1
-                else:
-                    self.w[d][n] = self.w[d][self.truth_F[d][n]]
-                    self.N[d] += 1
-                    total_w_num += 1
-                    
+        word_sequence_file = glob.glob(f"grammar_{self.file_name_option}_{self.grammar}.npy")
+        if len(word_sequence_file)==0:
+            #create word sequence
+            D,N_max = self.w.shape
+            self.truth_F = np.zeros_like(self.w,dtype=np.int8)
+            self.N = np.zeros(D,dtype=np.int8)
+            total_w_num = 0
+            for d in range(D):
+                self.truth_F[d][0] = np.random.choice(N_max,p=self.truth_T0)
+                self.w[d][0] = self.w[d][self.truth_F[d][0]]
+                self.N[d] += 1
+                total_w_num += 1
+                for n in range(1,N_max):
+                    self.truth_F[d][n] = np.random.choice(N_max+1,p=self.truth_T[self.truth_F[d][n-1]])
+                    if self.truth_F[d][n] == N_max:
+                        self.w[d][n] = -1
+                    else:
+                        self.w[d][n] = self.w[d][self.truth_F[d][n]]
+                        self.N[d] += 1
+                        total_w_num += 1
+            np.save(f"grammar_{file_name_option}_{self.grammar}",{"D":D,"N":self.N,"w":self.w,"truth_F":self.truth_F},allow_pickle=True)
+        else:
+            self.D, self.N, self.w, self.truth_F = np.load(word_sequence_file[0],allow_pickle=True).item().values()  
+            self.w = self.w.numpy()
+
     def setting_learned_model(self,w,beta,file_name_option,mutual_iteration,model_dir):
         model_file = glob.glob(os.path.join(model_dir,"VAE_Module",f"mutual_iteration={mutual_iteration}_epoch=*.pth"))[0]
         self.vae_module.load_state_dict(torch.load(model_file))
@@ -85,6 +93,7 @@ class CSL_VAE():
         self.experimental_setting()
         reset_CSL = False
         word_sequence_info = {"valid_list":self.valid_list,"truth_F":self.truth_F,"truth_T0":self.truth_T0,"truth_T":self.truth_T}
+
         np.save(os.path.join(self.exp_dir,"word sequence setting"),word_sequence_info,allow_pickle=True)
         for i in range(self.mutual_iteration_number+1):
             print(f"Start Mutural Iteration {i}")
@@ -126,13 +135,12 @@ class CSL_VAE():
 
 file_name_option = None
 dataset_name = "3dshapes"
-file_name_option ="six_view_point_66644_2"
+file_name_option = "six_view_point_66644_2"
 Attribute_num = 5
 
 label = np.load(f"dataset/{dataset_name}_hsv_labels_{file_name_option}.npy")
 w=label_to_vocab(label[:,:5])
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+device = torch.device("cuda",1)
 #Experimenttal Setting
 mutual_iteration_number_list = [10]
 truth_category_num_list = [6,6,6,4,4]
@@ -140,11 +148,8 @@ valid_num = 10
 latent_dim = 10
 valid_list = [[np.random.randint(sum(truth_category_num_list[:i]),sum(truth_category_num_list[:i+1])) for i in range(len(truth_category_num_list))] for v in range(valid_num)]
 
-CSL_Module_parameters = {"MAXITER":100,"A":latent_dim,"K":10,"alpha_T":1,"alpha_theta":1,"alpha_T0":1,"alpha_pi":1,"m":0,"tau":0.01,"a_lam":10,"b_lam":10}
-VAE_Module_parameters_list = [{"beta":20,"latent_dim":latent_dim,"linear_dim":1024,"epoch":5000,"image_size":64,"batch_size":100}]
-
-bigram_grammar = {"truth_T0":np.array([0.5,0.2,0.3,0,0]),"truth_T":np.array([[0,0.6,0.2,0.2,0,0],[0,0,0.5,0.3,0.1,0.1],[0,0,0,0.4,0.4,0.2],[0,0,0,0,0.7,0.3],[0,0,0,0,0,1],[0,0,0,0,0,1]])}
-#bigram_grammar = {"truth_T0":np.array([1,0,0,0,0]),"truth_T":np.array([[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1],[0,0,0,0,0,1]])}
+CSL_Module_parameters = {"MAXITER":100,"A":latent_dim,"K":15,"alpha_T":1,"alpha_theta":0.1,"alpha_T0":1,"alpha_pi":1,"m":0,"tau":0.001,"a_lam":10,"b_lam":10}
+VAE_Module_parameters_list = [{"beta":16,"latent_dim":latent_dim,"linear_dim":1024,"epoch":5000,"image_size":64,"batch_size":100}]
 
 setting_condition = False
 condition_exp = 2
@@ -154,10 +159,11 @@ if setting_condition:
     word_sequence_setting_file = os.path.join(exp_dir,"word sequence setting.npy")
     data = np.load(word_sequence_setting_file,allow_pickle=True).item()
     valid_list,_,_,_ = data.values()
-    #bigram_grammar = {"truth_T0":truth_T0,"truth_T":truth_T}
 
+experiment_iter = 10
 if __name__ == "__main__":
-    for mutual_iteration_number in mutual_iteration_number_list:
-        for VAE_Module_parameters in VAE_Module_parameters_list:
-            csl_vae = CSL_VAE(file_name_option,mutual_iteration_number,CSL_Module_parameters,VAE_Module_parameters,valid_list)
-            csl_vae.learn()
+    for i in range(experiment_iter):
+        for mutual_iteration_number in mutual_iteration_number_list:
+            for VAE_Module_parameters in VAE_Module_parameters_list:
+                csl_vae = CSL_VAE(file_name_option,mutual_iteration_number,CSL_Module_parameters,VAE_Module_parameters,valid_list,"skip")
+                csl_vae.learn()

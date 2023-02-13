@@ -100,6 +100,7 @@ batch_size = 3000
 file_name_option = None
 dataset_name = "3dshapes"
 file_name_option = "six_view_point_66644_2"
+grammar = "skip"
 
 ########## create dataloader  (Check "shuffle = True". If this value is False, the model cannot gain disentangled representation) #############
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -119,7 +120,7 @@ for exp in exp_list:
         result_MI_dir = os.path.join(result_dir,f"MI{iter}")
         os.makedirs(result_MI_dir,exist_ok=True)
         CSL_Module_parameters,VAE_Module_parameters = np.load(f"exp_CSL_VAE/exp{exp}/Hyperparameters.npy",allow_pickle=True).item().values()
-        csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list)
+        csl_vae = CSL_VAE(file_name_option,mutual_iteration_number=11,CSL_Module_parameters=CSL_Module_parameters,VAE_Module_parameters=VAE_Module_parameters,valid_list=valid_list,grammar=grammar)
         csl_vae.setting_learned_model(w,beta=16,file_name_option=file_name_option,mutual_iteration=iter,model_dir=model_dir)
         model = csl_vae.vae_module.to(device)
         z_trans=np.arange(100) #Latent traversal range

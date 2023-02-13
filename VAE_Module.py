@@ -7,7 +7,7 @@ from torch.autograd import Variable
 from utils import save_model,HSV2RGB,create_dataloader
 import copy
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
 
 class Flatten(nn.Module):
@@ -107,11 +107,7 @@ class VAE_Module(nn.Module):
     def loss_function(self, recon_x, x, mu, logvar,batch_prior_mu,batch_prior_logvar, mutual_iteration):
         BCE = F.binary_cross_entropy(recon_x, x, reduction='sum')
         if mutual_iteration==0:        
-            KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp() )
-        elif self.send_mu:
-            batch_prior_mu.requires_grad = False
-            diff = mu - batch_prior_mu # μ_１ - μ_0
-            KLD = 0.5 * ((logvar.exp() + diff.pow(2) - logvar).sum(1) - self.latent_dim).sum()
+            KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
         else:
             batch_prior_mu.requires_grad = False
             batch_prior_logvar.requires_grad = False
